@@ -76,6 +76,70 @@ void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned cha
 void plot_pixel_jpeg(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
+/*My Variables START*/
+
+// Struct used to hold a point -- will be used for both vectors and points since they can be represented the same way
+struct point {
+	double x;
+	double y;
+	double z;
+};
+
+// Will hold the componets of a ray
+struct ray {
+	point origin; // Where the ray comes from
+	point vectorDirection; // Will hold the normalized direction of the ray
+	double t; // The t multiple of the ray -- used to check for collisions
+};
+
+// For the four corner points of the image plane
+point cornerPoints[4];
+
+// For holding all of the rays
+ray rays[WIDTH][HEIGHT];
+
+/*My Variables END*/
+
+/*My Math Functions BEGIN*/
+
+point getCrossProduct(point a, point b) {
+	point c; // The result of the cross product
+
+	c.x = (a.y * b.z) - (a.z * b.y);
+	c.y = (a.z * b.x) - (a.x * b.z);
+	c.z = (a.x * b.y) - (a.y * b.x);
+
+	return c;
+}
+
+point getUnitVector(point a) { // Unitize a vector
+	// Get the magnitude
+	float aDist = pow(a.x, 2) + pow(a.y, 2) + pow(a.z, 2);
+
+	if (aDist == 0) {
+		return a; // Cannot divide by zero
+	}
+
+	aDist = sqrt(aDist);
+
+	// Normalize the vector
+	a.x /= aDist;
+	a.y /= aDist;
+	a.z /= aDist;
+		
+	return a;
+}
+
+double getDotProduct(point a, point b) { // Return the dot product between two vectors
+	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+}
+
+/*My Math Functions END*/
+
+/* RAY TRACING FUNCTIONS START*/
+
+/* RAY TRACING FUNCTIONS END */
+
 //MODIFY THIS FUNCTION
 void draw_scene()
 {
@@ -254,7 +318,7 @@ int loadScene(char *argv)
 
 void display()
 {
-
+	
 }
 
 void init()
