@@ -2,7 +2,7 @@
 CSCI 480
 Assignment 3 Raytracer
 
-Name: <Your name here>
+Name: Tim Righettini
 */
 
 #include <pic.h>
@@ -11,12 +11,19 @@ Name: <Your name here>
 #include <GL/glu.h>
 #include <GL/glut.h>
 
+// Include other libraries
+#include <iostream>
+#include <sstream> 
+#include <vector>
 #include <stdio.h>
 #include <string>
+#include <cmath>
 
 #define MAX_TRIANGLES 2000
 #define MAX_SPHERES 10
 #define MAX_LIGHTS 10
+
+#define PI 3.14159265 // Needed for the trig calculations involved in this assignment
 
 char *filename=0;
 
@@ -92,11 +99,19 @@ struct ray {
 	double t; // The t multiple of the ray -- used to check for collisions
 };
 
+double aspectRatio; // Will hold the aspect ratio as a decimal value -- used for the calculation of the image plane
+
 // For the four corner points of the image plane
 point cornerPoints[4];
 
 // For holding all of the rays
 ray rays[WIDTH][HEIGHT];
+
+double pixelTraversalValueX; // Will hold how far across the image plane is needed to traverse from one pixel center to the next horizonally
+double pixelTraversalValueY; // Will hold how far across the image plane is needed to traverse from one pixel center to the next vertically
+// Note that half of each of these values accounts for the pixel center offset
+
+point cameraOrigin; // Will hold the camera origin, which in the base program will be (0,0,0)
 
 /*My Variables END*/
 
@@ -134,9 +149,89 @@ double getDotProduct(point a, point b) { // Return the dot product between two v
 	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 }
 
+double getDistance(point a, point b) { // Will use the distance formula to return a distance
+	return sqrt(pow((b.x - a.x), 2) + pow((b.y - a.y), 2));
+}
+
 /*My Math Functions END*/
 
 /* RAY TRACING FUNCTIONS START*/
+
+// Declare function prototypes:
+void doStepOne(); // This will complete all of the raycasting, which includes the following three functions
+void calculateFourCornerPoints(); // Will calculate the four corner points of the image plane
+void calculatePixelTraversalIntervals(); // Will calculate how much distance needs to be traversed per pixel with ray creation
+void calculateRays(); // When all of the appropriate values are found, actually calculate the rays
+
+void doStepOne() {
+	std::cout << "-----Completing Step One-----"<< std::endl;
+	calculateFourCornerPoints();
+	calculatePixelTraversalIntervals();
+	calculateRays();
+}
+
+void calculateFourCornerPoints() {
+	// Set the origin for the camera
+	cameraOrigin.x = 0; cameraOrigin.y = 0;	cameraOrigin.z = 0;
+
+	// Set the aspect ratio value
+	aspectRatio = (double)WIDTH/HEIGHT;
+
+	// Convert FOV/2 to radians for tan() 
+	double fovRadiansDivTwo = fov * (PI/180) / 2;
+
+	// Now calculate the base x, y, and z values for the image plane coordinates
+	point baseImagePlanePoint;
+	baseImagePlanePoint.x = aspectRatio * tan(fovRadiansDivTwo);
+	baseImagePlanePoint.y = tan(fovRadiansDivTwo);
+	baseImagePlanePoint.z = -1;
+
+	// Print base image plane corner point
+	std::cout << "Base Image Plane Corner x: " << baseImagePlanePoint.x << std::endl;
+	std::cout << "Base Image Plane Corner y: " << baseImagePlanePoint.y << std::endl;
+	std::cout << "Base Image Plane Corner z: " << baseImagePlanePoint.z << std::endl;
+
+	// Based upon the base values above, create the four corner points
+	cornerPoints[0] = baseImagePlanePoint;
+	cornerPoints[1] = baseImagePlanePoint;
+	cornerPoints[2] = baseImagePlanePoint;
+	cornerPoints[3] = baseImagePlanePoint;
+
+	// Now make adjustments, depending on what the point is 
+
+	// Top Left Point
+	cornerPoints[0].x *= -1;
+	cornerPoints[0].y *= 1;
+
+	// Top Right Point
+	cornerPoints[1].x *= 1;
+	cornerPoints[1].y *= 1;
+
+	// Bottom Left Point
+	cornerPoints[2].x *= -1;
+	cornerPoints[2].y *= -1;
+
+	// Bottom Right Point
+	cornerPoints[3].x *= 1;
+	cornerPoints[3].y *= -1;
+
+	// Now print out the four corner points
+	std::cout << "-----Resulting Corner Points-----"<< std::endl;
+	for (int i = 0; i < 4; i++) {
+		std::cout << "Point " << i << ": Image Plane Corner x: " << cornerPoints[i].x << std::endl;
+		std::cout << "Point " << i << ": Image Plane Corner y: " << cornerPoints[i].y << std::endl;
+		std::cout << "Point " << i << ": Image Plane Corner z: " << cornerPoints[i].z << std::endl;
+	}
+}
+
+void calculatePixelTraversalIntervals() {
+
+}
+
+void calculateRays() {
+
+}
+
 
 /* RAY TRACING FUNCTIONS END */
 
@@ -330,6 +425,9 @@ void init()
 
   glClearColor(0,0,0,0);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  // Do the raytracing calculations
+  doStepOne(); // Uniformly send out rays from one location
 }
 
 void idle()
