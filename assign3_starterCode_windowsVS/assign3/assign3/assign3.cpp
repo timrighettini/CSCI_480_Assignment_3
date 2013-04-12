@@ -17,6 +17,7 @@ Name: Tim Righettini
 #include <vector>
 #include <stdio.h>
 #include <string>
+#include <iomanip>
 #include <cmath>
 
 #define MAX_TRIANGLES 2000
@@ -117,6 +118,12 @@ point cameraOrigin; // Will hold the camera origin, which in the base program wi
 
 /*My Math Functions BEGIN*/
 
+// Function protoTypes:
+point getCrossProduct(point a, point b);
+point getUnitVector(point a);
+double getDotProduct(point a, point b);
+double getDistance(point a, point b);
+
 point getCrossProduct(point a, point b) {
 	point c; // The result of the cross product
 
@@ -129,7 +136,7 @@ point getCrossProduct(point a, point b) {
 
 point getUnitVector(point a) { // Unitize a vector
 	// Get the magnitude
-	float aDist = pow(a.x, 2) + pow(a.y, 2) + pow(a.z, 2);
+	double aDist = getDotProduct(a, a);
 
 	if (aDist == 0) {
 		return a; // Cannot divide by zero
@@ -284,7 +291,7 @@ void calculateRays() {
 	point loopPoint;
 	loopPoint.x = cornerPoints[0].x + pixelCenter.x;
 	loopPoint.y = cornerPoints[0].y - pixelCenter.y;
-	loopPoint.z = cornerPoints[0].z + pixelCenter.z;
+	loopPoint.z = pixelCenter.z;
 
 	// Create the ray shooting loop
 	while (loopPoint.y > cornerPoints[2].y) {
@@ -296,6 +303,9 @@ void calculateRays() {
 
 			// Normalize the direction of the ray
 			ray.vectorDirection = getUnitVector(ray.vectorDirection);
+
+			// Set t to 1, initially
+			ray.t = 1;
 
 			// Now store this ray into the array data structure, which maps to the image plane (i.e., the first data index [0][0] is the ray shooting through the top left pixel
 			rays[x][y] = ray;
@@ -312,11 +322,28 @@ void calculateRays() {
 		loopPoint.x = cornerPoints[0].x + pixelCenter.x; // Reset the x pixel center
 		x = 0; // Reset the x array index counter
 	}
-		// Print this value, make sure that it prints correctly
+
+	// Print this value, make sure that it prints correctly
 	std::cout << "-----RESULTS OF STEP ONE-----" << std::endl;
 	std::cout << "Number of rays created: " << numRaysCreated << std::endl;
-}
 
+	// Test, iterate through the array to make sure that there are no empty spots
+	/*
+	std::cout << "Ray Stats: " << std::endl;
+	for (x = 0; x < WIDTH; x++) {
+		for (y = 0; y < HEIGHT; y++) {				
+			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.x " << rays[x][y].vectorDirection.x << std::endl;
+			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.y " << rays[x][y].vectorDirection.y << std::endl;
+			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.z " << rays[x][y].vectorDirection.z << std::endl;
+			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectD  Magnitude: " << getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection) << std::endl;
+			std::cout << "rays[" << x << "][" << y << "].origin.x " << rays[x][y].origin.x << std::endl;
+			std::cout << "rays[" << x << "][" << y << "].origin.y " << rays[x][y].origin.y << std::endl;
+			std::cout << "rays[" << x << "][" << y << "].origin.z " << rays[x][y].origin.z << std::endl;
+			std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
+		}
+	}
+	*/
+}
 
 /* RAY TRACING FUNCTIONS END */
 
