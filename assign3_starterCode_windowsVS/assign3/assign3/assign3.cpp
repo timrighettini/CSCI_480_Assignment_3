@@ -37,6 +37,7 @@ int mode=MODE_DISPLAY;
 #define WIDTH 640
 #define HEIGHT 480
 
+
 //the field of view of the camera
 #define fov 60.0
 
@@ -123,7 +124,7 @@ point getCrossProduct(point a, point b);
 point getUnitVector(point a);
 double getDotProduct(point a, point b);
 double getDistance(point a, point b);
-double getQuadraticFormula(double a, double b, double c);
+double getQuadraticFormula(boolean isLowerVal, double b, double c);
 
 point getCrossProduct(point a, point b) {
 	point c; // The result of the cross product
@@ -161,10 +162,13 @@ double getDistance(point a, point b) { // Will use the distance formula to retur
 	return sqrt(pow((b.x - a.x), 2) + pow((b.y - a.y), 2));
 }
 
-double getQuadraticFormula(double a, double b, double c) { // Will use the quadratic value to return the two points of the sphere intersection
-	double t0 = (-b - ( sqrt(pow(b, 2) - (4*a*c)) )) / 2; // Get the lower value of the quadratic formula
-	double t1 = (-b + ( sqrt(pow(b, 2) - (4*a*c)) )) / 2; // Get the higher value of the quadratic formula
-	return t0, t1;
+double getQuadraticFormula(boolean isLowerVal, double b, double c) { // Will use the quadratic value to return the two points of the sphere intersection
+	double t = 0;
+	if (isLowerVal)
+		t = (-b - ( sqrt(pow(b, 2) - (4*c)) )) / 2; // Get the lower value of the quadratic formula
+	else
+		t = (-b + ( sqrt(pow(b, 2) - (4*c)) )) / 2; // Get the higher value of the quadratic formula
+	return t;
 }
 
 /*My Math Functions END*/
@@ -340,21 +344,21 @@ void calculateRays() {
 	std::cout << "Number of rays created: " << numRaysCreated << std::endl;
 
 	// Test, iterate through the array to make sure that there are no empty spots
-	/*
-	std::cout << "Ray Stats: " << std::endl;
-	for (x = 0; x < WIDTH; x++) {
-		for (y = 0; y < HEIGHT; y++) {				
-			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.x " << rays[x][y].vectorDirection.x << std::endl;
-			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.y " << rays[x][y].vectorDirection.y << std::endl;
-			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.z " << rays[x][y].vectorDirection.z << std::endl;
-			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectD  Magnitude: " << getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection) << std::endl;
-			std::cout << "rays[" << x << "][" << y << "].origin.x " << rays[x][y].origin.x << std::endl;
-			std::cout << "rays[" << x << "][" << y << "].origin.y " << rays[x][y].origin.y << std::endl;
-			std::cout << "rays[" << x << "][" << y << "].origin.z " << rays[x][y].origin.z << std::endl;
-			std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
-		}
-	}
-	*/
+	
+	//std::cout << "Ray Stats: " << std::endl;
+	//for (x = 0; x < WIDTH; x++) {
+	//	for (y = 0; y < HEIGHT; y++) {				
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.x " << rays[x][y].vectorDirection.x << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.y " << rays[x][y].vectorDirection.y << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.z " << rays[x][y].vectorDirection.z << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectD  Magnitude: " << getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection) << std::endl;
+	//		std::cout << "rays[" << x << "][" << y << "].origin.x " << rays[x][y].origin.x << std::endl;
+	//		std::cout << "rays[" << x << "][" << y << "].origin.y " << rays[x][y].origin.y << std::endl;
+	//		std::cout << "rays[" << x << "][" << y << "].origin.z " << rays[x][y].origin.z << std::endl;
+	//		std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
+	//	}
+	//}
+	
 
 }
 
@@ -369,12 +373,14 @@ void doStepTwo() {
 }
 void checkCollisionsSpheres() {
 
+	int numSphereCollisions = 0; // Value that tallies all of the sphere collisions
+
 	// Loop through all of the spheres
 	for (int i = 0; i < num_spheres; i++) {
 		for (int x = 0; x < WIDTH; x++) {
 			for (int y = 0; y < HEIGHT; y++) {
 				// Get xd^2 + yd^2 + zd^2 for the ray
-				double a = getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection); 
+				//double a = getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection); 
 
 				// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
 				double b = 2.0 * ( (rays[x][y].vectorDirection.x * (rays[x][y].origin.x - spheres[i].position[0])) + 
@@ -384,13 +390,18 @@ void checkCollisionsSpheres() {
 				// Get (x0 - xc)^2 + (y0 - yc)^2 + (z0 - zc)^2 + (r)^2
 				double c = pow((rays[x][y].origin.x - spheres[i].position[0]), 2) + 
 						   pow((rays[x][y].origin.y - spheres[i].position[1]), 2) + 
-						   pow((rays[x][y].origin.z - spheres[i].position[2]), 2) + 
-						   pow((spheres[i].radius), 2); 				
+						   pow((rays[x][y].origin.z - spheres[i].position[2]), 2) - 
+						   pow((spheres[i].radius), 2); 
+
+				//std::cout << (pow(b, 2) - (4*a*c) < 0) << std::endl;
 
 				// Now that the values have been initialized, let's make sure that b^2 -4ac is NOT negative
-				if (!(pow(b, 2) - (4*a*c) < 0)) { // Do the calculation, else, continue to the next loop iteration without any calculation
-					double t_0, t_1 = getQuadraticFormula(a,b,c);
-					if (t_0 < t_1) { // If t0 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
+				if (pow(b, 2) - (4*c) > 0) { // Do the calculation, else, continue to the next loop iteration without any calculation					
+					double t_0 = getQuadraticFormula(true,b,c); 
+					double t_1 = getQuadraticFormula(false,b,c);
+					// std::cout << "Intersection with ray [" << x << "][" << y << "] and sphere[" << i << "] with t values " << t_0 << " & " << t_1 << "!" << std::endl;
+					// The follwing condition is inverted because we are going on the -z axis, where higher negative values actually = being father away
+					if (!(t_0 < t_1)) { // If t0 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
 						if (t_0 < rays[x][y].t) // If the new t is closer to the camera than the old t, replece the old t with the new one
 							rays[x][y].t = t_0;
 					}
@@ -399,22 +410,16 @@ void checkCollisionsSpheres() {
 							rays[x][y].t = t_1;
 					}
 					// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
+					numSphereCollisions++;
 				}
 			}
 		}
 	}
 
-	/*
-	Sphere spheres[MAX_SPHERES];
-	typedef struct _Sphere
-	{
-	  double position[3];
-	  double color_diffuse[3];
-	  double color_specular[3];
-	  double shininess;
-	  double radius;
-	} Sphere;
-	*/
+	// Print this value, make sure that it prints correctly
+	std::cout << "-----RESULTS OF STEP TWO: PART ONE-----" << std::endl;
+	std::cout << "Number of Sphere Collisions: " << numSphereCollisions << std::endl;
+
 }
 void checkCollisionsPolygons() {
 
