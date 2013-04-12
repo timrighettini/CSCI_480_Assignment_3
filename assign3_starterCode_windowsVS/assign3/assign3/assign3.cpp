@@ -222,14 +222,99 @@ void calculateFourCornerPoints() {
 		std::cout << "Point " << i << ": Image Plane Corner y: " << cornerPoints[i].y << std::endl;
 		std::cout << "Point " << i << ": Image Plane Corner z: " << cornerPoints[i].z << std::endl;
 	}
+	// Here is where the corner points map out to for the image plane:
+	/*
+
+	0---------------1
+	|               |
+	|               |
+	|               |
+	2---------------3
+
+	*/
 }
 
 void calculatePixelTraversalIntervals() {
+	// Find the x distance between the two x points for the image plane (using the actual distance here)
+	// Using corner points 0 and 1
+	pixelTraversalValueX = getDistance(cornerPoints[0], cornerPoints[1]);
 
+	// Find the y distance between the two x points for the image plane (using the actual distance here)
+	// Using corner points 0 and 2
+	pixelTraversalValueY = getDistance(cornerPoints[0], cornerPoints[2]);
+
+	// Now print these values
+
+	std::cout << "-----Resulting X/Y Distances-----" << std::endl;
+	std::cout << "xDistance: " << pixelTraversalValueX << std::endl;
+	std::cout << "yDistance: " << pixelTraversalValueY << std::endl;
+	// Now divide these values by the width and Height, respectively, and then the actual travseral distance per pixel should be attained
+
+	pixelTraversalValueX = (double)pixelTraversalValueX/WIDTH;
+	pixelTraversalValueY = (double)pixelTraversalValueY/HEIGHT;
+
+	// Now Print these values
+	std::cout << "-----Resulting X/Y Distance Intervals-----" << std::endl;
+	std::cout << "pixelTraversalValueX: " << pixelTraversalValueX << std::endl;
+	std::cout << "pixelTraversalValueY: " << pixelTraversalValueY << std::endl;
 }
 
 void calculateRays() {
+	// Get the top left pixel center by taking each pixel traveral value and dividing it by two, make the result a point
+	point pixelCenter;
 
+	pixelCenter.x = pixelTraversalValueX/2;
+	pixelCenter.y = pixelTraversalValueY/2;
+	pixelCenter.z = -1; // Remember, Z is always -1 for the image plane
+
+	// Print this value, make sure that it prints correctly
+	std::cout << "-----PixelCenter X/Y/Z Values-----" << std::endl;
+	std::cout << "pixelCenter.x " << pixelCenter.x << std::endl;
+	std::cout << "pixelCenter.y " << pixelCenter.y << std::endl;
+	std::cout << "pixelCenter.z " << pixelCenter.z << std::endl;
+	// Now use this value as a starting point to iterate through all of the pixels in the array
+
+	// Need index values for storing the rays
+	int x = 0; // The 0th pixel on the x-axis, will be used to store rays into the array structure
+	int y = 0; // The 0th pixel on the y-axis, will be used to store rays into the array structure
+
+	int numRaysCreated = 0; // Will keep track of how many rays have been created within the loop, to make sure that this is correct
+
+	// Set the loop starting point for ray shooting begin at the top left corner plus the pixel center offset
+	point loopPoint;
+	loopPoint.x = cornerPoints[0].x + pixelCenter.x;
+	loopPoint.y = cornerPoints[0].y - pixelCenter.y;
+	loopPoint.z = cornerPoints[0].z + pixelCenter.z;
+
+	// Create the ray shooting loop
+	while (loopPoint.y > cornerPoints[2].y) {
+		while (loopPoint.x < cornerPoints[1].x) {
+			// Create the ray direction from the loopPoint, and the origin from cameraOrigin, then normalize the direction
+			ray ray;
+			ray.origin = cameraOrigin;
+			ray.vectorDirection = loopPoint;
+
+			// Normalize the direction of the ray
+			ray.vectorDirection = getUnitVector(ray.vectorDirection);
+
+			// Now store this ray into the array data structure, which maps to the image plane (i.e., the first data index [0][0] is the ray shooting through the top left pixel
+			rays[x][y] = ray;
+
+			// Increment the two incrementors
+			x++; // Increment the x array index counter
+			loopPoint.x += pixelTraversalValueX; // Decrement the y pixel counter	// Increment the x pixel counter
+
+			// Increment numRaysCreated
+			numRaysCreated++;
+		}
+		y++; // Increment the y array index counter
+		loopPoint.y -= pixelTraversalValueY; // Decrement the y pixel counter
+		loopPoint.x = cornerPoints[0].x + pixelCenter.x; // Reset the x pixel center
+		x = 0; // Reset the x array index counter
+	}
+		// Print this value, make sure that it prints correctly
+	std::cout << "-----RESULTS OF STEP ONE-----" << std::endl;
+	std::cout << "Number of rays created: " << numRaysCreated << std::endl;
 }
 
 
