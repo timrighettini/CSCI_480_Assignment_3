@@ -123,6 +123,7 @@ point getCrossProduct(point a, point b);
 point getUnitVector(point a);
 double getDotProduct(point a, point b);
 double getDistance(point a, point b);
+double getQuadraticFormula(double a, double b, double c);
 
 point getCrossProduct(point a, point b) {
 	point c; // The result of the cross product
@@ -160,6 +161,12 @@ double getDistance(point a, point b) { // Will use the distance formula to retur
 	return sqrt(pow((b.x - a.x), 2) + pow((b.y - a.y), 2));
 }
 
+double getQuadraticFormula(double a, double b, double c) { // Will use the quadratic value to return the two points of the sphere intersection
+	double t0 = (-b - ( sqrt(pow(b, 2) - (4*a*c)) )) / 2; // Get the lower value of the quadratic formula
+	double t1 = (-b + ( sqrt(pow(b, 2) - (4*a*c)) )) / 2; // Get the higher value of the quadratic formula
+	return t0, t1;
+}
+
 /*My Math Functions END*/
 
 /* RAY TRACING FUNCTIONS START*/
@@ -170,6 +177,11 @@ void calculateFourCornerPoints(); // Will calculate the four corner points of th
 void calculatePixelTraversalIntervals(); // Will calculate how much distance needs to be traversed per pixel with ray creation
 void calculateRays(); // When all of the appropriate values are found, actually calculate the rays
 
+void doStepTwo(); // This will complete all of the collosion detection
+void checkCollisionsSpheres(); // This will loop through all of the spheres and find the closest point of intersection for this ray
+void checkCollisionsPolygons(); // This will loop through all of the triangles and find the closest intersection point for this ray -- may overwrite what was found in the sphere for obviousl reasons.
+
+/*STEP ONE FUNCTIONS START*/
 void doStepOne() {
 	std::cout << "-----Completing Step One-----"<< std::endl;
 	calculateFourCornerPoints();
@@ -343,7 +355,73 @@ void calculateRays() {
 		}
 	}
 	*/
+
 }
+
+/*STEP ONE FUNCTIONS END*/
+
+/*STEP TWO FUNCTIONS START*/
+
+void doStepTwo() {
+	std::cout << "-----Completing Step Two-----"<< std::endl;
+	checkCollisionsSpheres();
+	checkCollisionsPolygons();
+}
+void checkCollisionsSpheres() {
+
+	// Loop through all of the spheres
+	for (int i = 0; i < num_spheres; i++) {
+		for (int x = 0; x < WIDTH; x++) {
+			for (int y = 0; y < HEIGHT; y++) {
+				// Get xd^2 + yd^2 + zd^2 for the ray
+				double a = getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection); 
+
+				// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
+				double b = 2.0 * ( (rays[x][y].vectorDirection.x * (rays[x][y].origin.x - spheres[i].position[0])) + 
+								   (rays[x][y].vectorDirection.y * (rays[x][y].origin.y - spheres[i].position[1])) + 
+								   (rays[x][y].vectorDirection.z * (rays[x][y].origin.z - spheres[i].position[2])) ); 
+				
+				// Get (x0 - xc)^2 + (y0 - yc)^2 + (z0 - zc)^2 + (r)^2
+				double c = pow((rays[x][y].origin.x - spheres[i].position[0]), 2) + 
+						   pow((rays[x][y].origin.y - spheres[i].position[1]), 2) + 
+						   pow((rays[x][y].origin.z - spheres[i].position[2]), 2) + 
+						   pow((spheres[i].radius), 2); 				
+
+				// Now that the values have been initialized, let's make sure that b^2 -4ac is NOT negative
+				if (!(pow(b, 2) - (4*a*c) < 0)) { // Do the calculation, else, continue to the next loop iteration without any calculation
+					double t_0, t_1 = getQuadraticFormula(a,b,c);
+					if (t_0 < t_1) { // If t0 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
+						if (t_0 < rays[x][y].t) // If the new t is closer to the camera than the old t, replece the old t with the new one
+							rays[x][y].t = t_0;
+					}
+					else { // If t1 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
+						if (t_1 < rays[x][y].t) // If the new t is closer to the camera than the old t, replece the old t with the new one
+							rays[x][y].t = t_1;
+					}
+					// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
+				}
+			}
+		}
+	}
+
+	/*
+	Sphere spheres[MAX_SPHERES];
+	typedef struct _Sphere
+	{
+	  double position[3];
+	  double color_diffuse[3];
+	  double color_specular[3];
+	  double shininess;
+	  double radius;
+	} Sphere;
+	*/
+}
+void checkCollisionsPolygons() {
+
+}
+
+/*STEP TWO FUNCTIONS END*/
+
 
 /* RAY TRACING FUNCTIONS END */
 
@@ -540,6 +618,7 @@ void init()
 
   // Do the raytracing calculations
   doStepOne(); // Uniformly send out rays from one location
+  doStepTwo(); // Check for intersections with triangles and spheres
 }
 
 void idle()
