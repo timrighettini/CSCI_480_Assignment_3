@@ -99,6 +99,7 @@ struct ray {
 	point origin; // Where the ray comes from
 	point vectorDirection; // Will hold the normalized direction of the ray
 	double t; // The t multiple of the ray -- used to check for collisions
+	bool isSetT; // This value will initially be set to false, because t has not been set upon instantiation
 };
 
 double aspectRatio; // Will hold the aspect ratio as a decimal value -- used for the calculation of the image plane
@@ -320,8 +321,10 @@ void calculateRays() {
 			// Normalize the direction of the ray
 			ray.vectorDirection = getUnitVector(ray.vectorDirection);
 
-			// Set t to 1, initially
-			ray.t = 1;
+			// Set t to 0, initially
+			ray.t = 0;
+
+			ray.isSetT = false; // This values needs to be set to false initially, or t will never get set
 
 			// Now store this ray into the array data structure, which maps to the image plane (i.e., the first data index [0][0] is the ray shooting through the top left pixel
 			rays[x][y] = ray;
@@ -358,8 +361,6 @@ void calculateRays() {
 	//		std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
 	//	}
 	//}
-	
-
 }
 
 /*STEP ONE FUNCTIONS END*/
@@ -393,21 +394,24 @@ void checkCollisionsSpheres() {
 						   pow((rays[x][y].origin.z - spheres[i].position[2]), 2) - 
 						   pow((spheres[i].radius), 2); 
 
-				//std::cout << (pow(b, 2) - (4*a*c) < 0) << std::endl;
+				//std::cout << (pow(b, 2) - (4*c) < 0) << std::endl;
 
 				// Now that the values have been initialized, let's make sure that b^2 -4ac is NOT negative
 				if (pow(b, 2) - (4*c) > 0) { // Do the calculation, else, continue to the next loop iteration without any calculation					
 					double t_0 = getQuadraticFormula(true,b,c); 
 					double t_1 = getQuadraticFormula(false,b,c);
 					// std::cout << "Intersection with ray [" << x << "][" << y << "] and sphere[" << i << "] with t values " << t_0 << " & " << t_1 << "!" << std::endl;
-					// The follwing condition is inverted because we are going on the -z axis, where higher negative values actually = being father away
-					if (!(t_0 < t_1)) { // If t0 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
-						if (t_0 < rays[x][y].t) // If the new t is closer to the camera than the old t, replece the old t with the new one
+					if ((t_0 < t_1)) { // If t0 is the first intersection, store that value within the ray to easily find where the collision occurred in space
+						if (t_0 < rays[x][y].t || !rays[x][y].isSetT) { // If the new t is closer to the camera than the old t, replece the old t with the new one, or the ray's t needs to be set for the first time
 							rays[x][y].t = t_0;
+							rays[x][y].isSetT = true;
+						}
 					}
 					else { // If t1 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
-						if (t_1 < rays[x][y].t) // If the new t is closer to the camera than the old t, replece the old t with the new one
+						if (t_1 < rays[x][y].t || !rays[x][y].isSetT) { // If the new t is closer to the camera than the old t, replece the old t with the new one, or the ray's t needs to be set for the first time
 							rays[x][y].t = t_1;
+							rays[x][y].isSetT = true;
+						}
 					}
 					// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
 					numSphereCollisions++;
@@ -419,6 +423,20 @@ void checkCollisionsSpheres() {
 	// Print this value, make sure that it prints correctly
 	std::cout << "-----RESULTS OF STEP TWO: PART ONE-----" << std::endl;
 	std::cout << "Number of Sphere Collisions: " << numSphereCollisions << std::endl;
+
+	// Test, iterate through the array to make sure that there are no empty spots
+	
+	//std::cout << "Ray Stats (t): " << std::endl;
+	//for (int x = 0; x < WIDTH; x++) {
+	//	for (int y = 0; y < HEIGHT; y++) {				
+	//		if (rays[x][y].t > 0) {
+	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.x " << rays[x][y].vectorDirection.x << std::endl;
+	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.y " << rays[x][y].vectorDirection.y << std::endl;
+	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.z " << rays[x][y].vectorDirection.z << std::endl;				
+	//			std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
+	//		}
+	//	}
+	//}
 
 }
 void checkCollisionsPolygons() {
