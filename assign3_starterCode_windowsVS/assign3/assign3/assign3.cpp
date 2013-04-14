@@ -204,9 +204,9 @@ void checkCollisionsPolygons(); // This will loop through all of the triangles a
 void doStepThree(); // This will complete all of the normal and lighting calculations, depending on what was collided with
 void calculateNormals(); // This will calculate the normals for both rays that intersected with spheres and triangles -- different lighting equations will be derived depending on the "shape" parameter of a ray
 void calculateColor(); // This will calculate phong lighting on every ray that collided with something, else, the background color will be used
-bool calculateShadowRay(ray collisionRay, double lightCollisionPoint[]); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
-bool checkShadowCollisionsSpheres(ray shadowRay); // Will check all of the spheres to see if there is a collision with a shadow ray
-bool checkShadowCollisionsTriangles(ray shadowRay); // Will check all of the triangles to see if there is a collision with a shadow ray
+bool calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
+bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the spheres to see if there is a collision with a shadow ray
+bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the triangles to see if there is a collision with a shadow ray
 
 /*STEP ONE FUNCTIONS START*/
 void doStepOne() {
@@ -518,74 +518,78 @@ void calculateColor() {
 			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
 				// Run through all of the light sources and cast shadow rays
 				for (int i = 0; i < num_lights; i++) {
-					if (calculateShadowRay(rays[x][y], lights[i].position)) { // If there were no collisions with the shadow ray, then calculate lighting for this light
+					// Make a shadowRay pointer, it will be needed for the lighting calculations
+					ray *shadowRay = new ray;
+					if (calculateShadowRay(&rays[x][y], lights[i].position, shadowRay)) { // If there were no collisions with the shadow ray, then calculate lighting for this light
 						// Do light calculations here
 					}
+
+					// At the end of all of this, make sure to delete the shaow ray to prevent a memory leak
+					delete shadowRay;
 				}
 			}
 		}
 	}
 }
 
-bool calculateShadowRay(ray collisionRay, double lightCollisionPoint[]) {
-
-	ray shadowRay; // Create the shadow ray
-
-	// Set up the shadowRay
+bool calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay) {
 
 	// Set the origin of the shadowRay to the origin of the collision
-	shadowRay.origin.x = collisionRay.collisionPoint.x;
-	shadowRay.origin.y = collisionRay.collisionPoint.y;
-	shadowRay.origin.z = collisionRay.collisionPoint.z;
+	shadowRay->origin.x = collisionRay->collisionPoint.x;
+	shadowRay->origin.y = collisionRay->collisionPoint.y;
+	shadowRay->origin.z = collisionRay->collisionPoint.z;
 
 	// Get the two unit rays that goes from:
 	// a) The camera to the light source -- needs to be calculated here
 	// b) The camera to the collision point -- attained through the first function argument
 
-	ray cameraToLight;
+	ray *cameraToLight = new ray;
 
-	cameraToLight.origin = cameraOrigin;
-	cameraToLight.direction.x = lightCollisionPoint[0] - cameraOrigin.x;
-	cameraToLight.direction.y = lightCollisionPoint[1] - cameraOrigin.y;
-	cameraToLight.direction.z = lightCollisionPoint[2] - cameraOrigin.z;
+	cameraToLight->origin = cameraOrigin;
+	cameraToLight->direction.x = lightCollisionPoint[0] - cameraOrigin.x;
+	cameraToLight->direction.y = lightCollisionPoint[1] - cameraOrigin.y;
+	cameraToLight->direction.z = lightCollisionPoint[2] - cameraOrigin.z;
 
 	// Normalize the direction vector
-	cameraToLight.direction = getUnitVector(cameraToLight.direction);
+	cameraToLight->direction = getUnitVector(cameraToLight->direction);
 
 	// Set the direction of the ray towards the light source (through (b) - (a)), and then normalize it again just to be sure
-	shadowRay.direction.x = cameraToLight.direction.x - collisionRay.direction.x;
-	shadowRay.direction.y = cameraToLight.direction.y - collisionRay.direction.y;
-	shadowRay.direction.z = cameraToLight.direction.z - collisionRay.direction.z;
+	shadowRay->direction.x = cameraToLight->direction.x - collisionRay->direction.x;
+	shadowRay->direction.y = cameraToLight->direction.y - collisionRay->direction.y;
+	shadowRay->direction.z = cameraToLight->direction.z - collisionRay->direction.z;
 
-	shadowRay.direction = getUnitVector(shadowRay.direction);
+	// Make sure to delete the cameraToLight ray, since it is not needed anymore
+	delete cameraToLight;
+
+	shadowRay->direction = getUnitVector(shadowRay->direction);
 
 	// Now check to see if this shadow ray collided with anything
 	if (checkShadowCollisionsSpheres(shadowRay, lightCollisionPoint)) return false; // If there is a collision with a sphere, return false
-	if (checkShadowCollisionsTriangles(shadowRay)) return false; // If there is a collision with a Triangle, return false
+	if (checkShadowCollisionsTriangles(shadowRay, lightCollisionPoint)) return false; // If there is a collision with a Triangle, return false
 
 	return true;
 }
 
-bool checkShadowCollisionsSpheres(ray shadowRay, double lightCollisionPoint[]) {
+bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) {
 
 	for (int i = 0; i < num_spheres; i++) {
 		// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
-		double b = 2.0 * ( (shadowRay.direction.x * (shadowRay.origin.x - spheres[i].position[0])) + 
-							(shadowRay.direction.y * (shadowRay.origin.y - spheres[i].position[1])) + 
-							(shadowRay.direction.z * (shadowRay.origin.z - spheres[i].position[2])) ); 
+		double b = 2.0 * ( (shadowRay->direction.x * (shadowRay->origin.x - spheres[i].position[0])) + 
+							(shadowRay->direction.y * (shadowRay->origin.y - spheres[i].position[1])) + 
+							(shadowRay->direction.z * (shadowRay->origin.z - spheres[i].position[2])) ); 
 				
 		// Get (x0 - xc)^2 + (y0 - yc)^2 + (z0 - zc)^2 + (r)^2
-		double c = pow((shadowRay.origin.x - spheres[i].position[0]), 2) + 
-					pow((shadowRay.origin.y - spheres[i].position[1]), 2) + 
-					pow((shadowRay.origin.z - spheres[i].position[2]), 2) - 
+		double c = pow((shadowRay->origin.x - spheres[i].position[0]), 2) + 
+					pow((shadowRay->origin.y - spheres[i].position[1]), 2) + 
+					pow((shadowRay->origin.z - spheres[i].position[2]), 2) - 
 					pow((spheres[i].radius), 2); 
 
 		// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
 		if (pow(b, 2) - (4*c) > 0) { // If there is an intersection, return true				
 			// Calculate the point of collision
-			shadowRay.collisionPoint.x = shadowRay.origin.x + (shadowRay.direction.x) * shadowRay.t;
-			shadowRay.collisionPoint.y = shadowRay.origin.y + (shadowRay.direction.y) * shadowRay.t;
-			shadowRay.collisionPoint.z = shadowRay.origin.z + (shadowRay.direction.z) * shadowRay.t;
+			shadowRay->collisionPoint.x = shadowRay->origin.x + (shadowRay->direction.x) * shadowRay->t;
+			shadowRay->collisionPoint.y = shadowRay->origin.y + (shadowRay->direction.y) * shadowRay->t;
+			shadowRay->collisionPoint.z = shadowRay->origin.z + (shadowRay->direction.z) * shadowRay->t;
 
 			// Convert the light position array into a point
 			point lightPosition;
@@ -595,7 +599,7 @@ bool checkShadowCollisionsSpheres(ray shadowRay, double lightCollisionPoint[]) {
 			
 			// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
 			// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
-			if (getDistance(shadowRay.collisionPoint, shadowRay.origin) < getDistance(lightPosition, shadowRay.origin)) // If so, return true
+			if (getDistance(shadowRay->collisionPoint, shadowRay->origin) < getDistance(lightPosition, shadowRay->origin)) // If so, return true
 				return true;
 		}
 	}
@@ -603,7 +607,7 @@ bool checkShadowCollisionsSpheres(ray shadowRay, double lightCollisionPoint[]) {
 	return false; // No collisions
 }
 
-bool checkShadowCollisionsTriangles(ray shadowRay) {
+bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]) {
 	return false;
 }
 
