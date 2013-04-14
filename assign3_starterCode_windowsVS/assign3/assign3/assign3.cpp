@@ -94,12 +94,26 @@ struct point {
 	double z;
 };
 
+// Struct that will hold the components of a color from 0 to 255
+struct color {
+	unsigned char red; 
+	unsigned char green;
+	unsigned char blue;
+}; 
+
 // Will hold the componets of a ray
+
+enum collisionWithShape {TRIANGLE, SPHERE};
+
 struct ray {
 	point origin; // Where the ray comes from
-	point vectorDirection; // Will hold the normalized direction of the ray
+	point direction; // Will hold the normalized direction of the ray
 	double t; // The t multiple of the ray -- used to check for collisions
 	bool isSetT; // This value will initially be set to false, because t has not been set upon instantiation
+	collisionWithShape collisionShape; // What type of saphe did the ray collide with?
+	point collisionNormal; // Will hold the result of a normal calculation, normalized
+	color collisionColor; // Will hold the color 
+	int collisionIndex; // Which shape did the ray collide with, along with the shape type aforementioned?
 };
 
 double aspectRatio; // Will hold the aspect ratio as a decimal value -- used for the calculation of the image plane
@@ -185,6 +199,11 @@ void calculateRays(); // When all of the appropriate values are found, actually 
 void doStepTwo(); // This will complete all of the collosion detection
 void checkCollisionsSpheres(); // This will loop through all of the spheres and find the closest point of intersection for this ray
 void checkCollisionsPolygons(); // This will loop through all of the triangles and find the closest intersection point for this ray -- may overwrite what was found in the sphere for obviousl reasons.
+
+void doStepThree(); // This will complete all of the normal and lighting calculations, depending on what was collided with
+void calculateNormals(); // This will calculate the normals for both rays that intersected with spheres and triangles -- different lighting equations will be derived depending on the "shape" parameter of a ray
+void calculateColor(); // This will calculate phong lighting on every ray that collided with something, else, the background color will be used
+
 
 /*STEP ONE FUNCTIONS START*/
 void doStepOne() {
@@ -316,10 +335,10 @@ void calculateRays() {
 			// Create the ray direction from the loopPoint, and the origin from cameraOrigin, then normalize the direction
 			ray ray;
 			ray.origin = cameraOrigin;
-			ray.vectorDirection = loopPoint;
+			ray.direction = loopPoint;
 
 			// Normalize the direction of the ray
-			ray.vectorDirection = getUnitVector(ray.vectorDirection);
+			ray.direction = getUnitVector(ray.direction);
 
 			// Set t to 0, initially
 			ray.t = 0;
@@ -351,10 +370,10 @@ void calculateRays() {
 	//std::cout << "Ray Stats: " << std::endl;
 	//for (x = 0; x < WIDTH; x++) {
 	//	for (y = 0; y < HEIGHT; y++) {				
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.x " << rays[x][y].vectorDirection.x << std::endl;
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.y " << rays[x][y].vectorDirection.y << std::endl;
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.z " << rays[x][y].vectorDirection.z << std::endl;
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectD  Magnitude: " << getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection) << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.x " << rays[x][y].direction.x << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.y " << rays[x][y].direction.y << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.z " << rays[x][y].direction.z << std::endl;
+	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectD  Magnitude: " << getDotProduct(rays[x][y].direction, rays[x][y].direction) << std::endl;
 	//		std::cout << "rays[" << x << "][" << y << "].origin.x " << rays[x][y].origin.x << std::endl;
 	//		std::cout << "rays[" << x << "][" << y << "].origin.y " << rays[x][y].origin.y << std::endl;
 	//		std::cout << "rays[" << x << "][" << y << "].origin.z " << rays[x][y].origin.z << std::endl;
@@ -381,12 +400,12 @@ void checkCollisionsSpheres() {
 		for (int x = 0; x < WIDTH; x++) {
 			for (int y = 0; y < HEIGHT; y++) {
 				// Get xd^2 + yd^2 + zd^2 for the ray
-				//double a = getDotProduct(rays[x][y].vectorDirection, rays[x][y].vectorDirection); 
+				//double a = getDotProduct(rays[x][y].direction, rays[x][y].direction); 
 
 				// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
-				double b = 2.0 * ( (rays[x][y].vectorDirection.x * (rays[x][y].origin.x - spheres[i].position[0])) + 
-								   (rays[x][y].vectorDirection.y * (rays[x][y].origin.y - spheres[i].position[1])) + 
-								   (rays[x][y].vectorDirection.z * (rays[x][y].origin.z - spheres[i].position[2])) ); 
+				double b = 2.0 * ( (rays[x][y].direction.x * (rays[x][y].origin.x - spheres[i].position[0])) + 
+								   (rays[x][y].direction.y * (rays[x][y].origin.y - spheres[i].position[1])) + 
+								   (rays[x][y].direction.z * (rays[x][y].origin.z - spheres[i].position[2])) ); 
 				
 				// Get (x0 - xc)^2 + (y0 - yc)^2 + (z0 - zc)^2 + (r)^2
 				double c = pow((rays[x][y].origin.x - spheres[i].position[0]), 2) + 
@@ -402,15 +421,19 @@ void checkCollisionsSpheres() {
 					double t_1 = getQuadraticFormula(false,b,c);
 					// std::cout << "Intersection with ray [" << x << "][" << y << "] and sphere[" << i << "] with t values " << t_0 << " & " << t_1 << "!" << std::endl;
 					if ((t_0 < t_1)) { // If t0 is the first intersection, store that value within the ray to easily find where the collision occurred in space
-						if (t_0 < rays[x][y].t || !rays[x][y].isSetT) { // If the new t is closer to the camera than the old t, replece the old t with the new one, or the ray's t needs to be set for the first time
+						if (t_0 < rays[x][y].t || !rays[x][y].isSetT) { // If the new t is closer to the camera than the old t, replace the old t with the new one, or the ray's t needs to be set for the first time
 							rays[x][y].t = t_0;
 							rays[x][y].isSetT = true;
+							rays[x][y].collisionShape = SPHERE;
+							rays[x][y].collisionIndex = i;
 						}
 					}
 					else { // If t1 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
-						if (t_1 < rays[x][y].t || !rays[x][y].isSetT) { // If the new t is closer to the camera than the old t, replece the old t with the new one, or the ray's t needs to be set for the first time
+						if (t_1 < rays[x][y].t || !rays[x][y].isSetT) { // If the new t is closer to the camera than the old t, replace the old t with the new one, or the ray's t needs to be set for the first time
 							rays[x][y].t = t_1;
 							rays[x][y].isSetT = true;
+							rays[x][y].collisionShape = SPHERE;
+							rays[x][y].collisionIndex = i;
 						}
 					}
 					// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
@@ -430,9 +453,9 @@ void checkCollisionsSpheres() {
 	//for (int x = 0; x < WIDTH; x++) {
 	//	for (int y = 0; y < HEIGHT; y++) {				
 	//		if (rays[x][y].t > 0) {
-	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.x " << rays[x][y].vectorDirection.x << std::endl;
-	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.y " << rays[x][y].vectorDirection.y << std::endl;
-	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectorDirection.z " << rays[x][y].vectorDirection.z << std::endl;				
+	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.x " << rays[x][y].direction.x << std::endl;
+	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.y " << rays[x][y].direction.y << std::endl;
+	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.z " << rays[x][y].direction.z << std::endl;				
 	//			std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
 	//		}
 	//	}
@@ -444,6 +467,49 @@ void checkCollisionsPolygons() {
 }
 
 /*STEP TWO FUNCTIONS END*/
+
+/*STEP THREE FUNCTIONS START*/
+
+void doStepThree() { 
+	calculateNormals();
+	calculateColor();
+}
+
+void calculateNormals() {
+	for (int x = 0; x < WIDTH; x++) {
+		for (int y = 0; y < HEIGHT; y++) {
+			// Calculate the normals for each rays that has collided with something (check the isSetT bool)
+			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
+				if (rays[x][y].collisionShape == SPHERE) { // Then this ray collided with a sphere, do the sphere normal calculation
+					rays[x][y].collisionNormal.x = ((rays[x][y].origin.x + (rays[x][y].direction.x) * rays[x][y].t) - spheres[rays[x][y].collisionIndex].position[0]) / spheres[rays[x][y].collisionIndex].radius;
+					rays[x][y].collisionNormal.y = ((rays[x][y].origin.y + (rays[x][y].direction.y) * rays[x][y].t) - spheres[rays[x][y].collisionIndex].position[1]) / spheres[rays[x][y].collisionIndex].radius;
+					rays[x][y].collisionNormal.z = ((rays[x][y].origin.z + (rays[x][y].direction.z) * rays[x][y].t) - spheres[rays[x][y].collisionIndex].position[2]) / spheres[rays[x][y].collisionIndex].radius;
+				}
+				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
+					continue; // Will add in content when the time comes
+				}
+			}
+		}
+	}
+}
+
+void calculateColor() {
+	for (int x = 0; x < WIDTH; x++) {
+		for (int y = 0; y < HEIGHT; y++) {
+			// Calculate the normals for each rays that has collided with something (check the isSetT bool)
+			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
+				if (rays[x][y].collisionShape == SPHERE) { // Then this ray collided with a sphere, do the sphere normal calculation
+
+				}
+				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
+					continue; // Will add in content when the time comes
+				}
+			}
+		}
+	}
+}
+
+/*STEP THREE FUNCTIONS END*/
 
 
 /* RAY TRACING FUNCTIONS END */
@@ -642,6 +708,7 @@ void init()
   // Do the raytracing calculations
   doStepOne(); // Uniformly send out rays from one location
   doStepTwo(); // Check for intersections with triangles and spheres
+  doStepThree(); // Complete all of the lighting functionality of the raytracer here
 }
 
 void idle()
