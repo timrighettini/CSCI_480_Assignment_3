@@ -114,6 +114,7 @@ struct ray {
 	point collisionNormal; // Will hold the result of a normal calculation, normalized
 	color collisionColor; // Will hold the color 
 	int collisionIndex; // Which shape did the ray collide with, along with the shape type aforementioned?
+	point collisionPoint; // Where the collision actually occurred for this ray, will be easier to reference this way, as it will be used more than once
 };
 
 double aspectRatio; // Will hold the aspect ratio as a decimal value -- used for the calculation of the image plane
@@ -203,7 +204,9 @@ void checkCollisionsPolygons(); // This will loop through all of the triangles a
 void doStepThree(); // This will complete all of the normal and lighting calculations, depending on what was collided with
 void calculateNormals(); // This will calculate the normals for both rays that intersected with spheres and triangles -- different lighting equations will be derived depending on the "shape" parameter of a ray
 void calculateColor(); // This will calculate phong lighting on every ray that collided with something, else, the background color will be used
-
+bool calculateShadowRay(ray collisionRay, double lightCollisionPoint[]); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
+bool checkShadowCollisionsSpheres(ray shadowRay); // Will check all of the spheres to see if there is a collision with a shadow ray
+bool checkShadowCollisionsTriangles(ray shadowRay); // Will check all of the triangles to see if there is a collision with a shadow ray
 
 /*STEP ONE FUNCTIONS START*/
 void doStepOne() {
@@ -415,7 +418,7 @@ void checkCollisionsSpheres() {
 
 				//std::cout << (pow(b, 2) - (4*c) < 0) << std::endl;
 
-				// Now that the values have been initialized, let's make sure that b^2 -4ac is NOT negative
+				// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
 				if (pow(b, 2) - (4*c) > 0) { // Do the calculation, else, continue to the next loop iteration without any calculation					
 					double t_0 = getQuadraticFormula(true,b,c); 
 					double t_1 = getQuadraticFormula(false,b,c);
@@ -436,6 +439,11 @@ void checkCollisionsSpheres() {
 							rays[x][y].collisionIndex = i;
 						}
 					}
+					// Calculate the collision point for reference
+					rays[x][y].collisionPoint.x = rays[x][y].origin.x + (rays[x][y].direction.x) * rays[x][y].t;
+					rays[x][y].collisionPoint.y = rays[x][y].origin.y + (rays[x][y].direction.y) * rays[x][y].t;
+					rays[x][y].collisionPoint.z = rays[x][y].origin.z + (rays[x][y].direction.z) * rays[x][y].t;
+
 					// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
 					numSphereCollisions++;
 				}
@@ -471,26 +479,36 @@ void checkCollisionsPolygons() {
 /*STEP THREE FUNCTIONS START*/
 
 void doStepThree() { 
+	std::cout << "-----Completing Step THREE-----"<< std::endl;
 	calculateNormals();
 	calculateColor();
 }
 
 void calculateNormals() {
+	int numSphereNormals = 0;
+	int numTriangleNormals = 0;
+	
 	for (int x = 0; x < WIDTH; x++) {
 		for (int y = 0; y < HEIGHT; y++) {
 			// Calculate the normals for each rays that has collided with something (check the isSetT bool)
 			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
 				if (rays[x][y].collisionShape == SPHERE) { // Then this ray collided with a sphere, do the sphere normal calculation
-					rays[x][y].collisionNormal.x = ((rays[x][y].origin.x + (rays[x][y].direction.x) * rays[x][y].t) - spheres[rays[x][y].collisionIndex].position[0]) / spheres[rays[x][y].collisionIndex].radius;
-					rays[x][y].collisionNormal.y = ((rays[x][y].origin.y + (rays[x][y].direction.y) * rays[x][y].t) - spheres[rays[x][y].collisionIndex].position[1]) / spheres[rays[x][y].collisionIndex].radius;
-					rays[x][y].collisionNormal.z = ((rays[x][y].origin.z + (rays[x][y].direction.z) * rays[x][y].t) - spheres[rays[x][y].collisionIndex].position[2]) / spheres[rays[x][y].collisionIndex].radius;
+					rays[x][y].collisionNormal.x = (rays[x][y].collisionPoint.x - spheres[rays[x][y].collisionIndex].position[0]) / spheres[rays[x][y].collisionIndex].radius;
+					rays[x][y].collisionNormal.y = (rays[x][y].collisionPoint.y - spheres[rays[x][y].collisionIndex].position[1]) / spheres[rays[x][y].collisionIndex].radius;
+					rays[x][y].collisionNormal.z = (rays[x][y].collisionPoint.z - spheres[rays[x][y].collisionIndex].position[2]) / spheres[rays[x][y].collisionIndex].radius;
+					numSphereNormals++;
 				}
 				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
 					continue; // Will add in content when the time comes
+					numTriangleNormals++;
 				}
 			}
 		}
 	}
+	// Print this value, make sure that it prints correctly
+	std::cout << "-----RESULTS OF STEP THREE: PART ONE-----" << std::endl;
+	std::cout << "Number of Sphere Normal Calculations: " << numSphereNormals << std::endl;
+	std::cout << "Number of Triangle Normal Calculations: " << numTriangleNormals << std::endl;
 }
 
 void calculateColor() {
@@ -498,15 +516,81 @@ void calculateColor() {
 		for (int y = 0; y < HEIGHT; y++) {
 			// Calculate the normals for each rays that has collided with something (check the isSetT bool)
 			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
-				if (rays[x][y].collisionShape == SPHERE) { // Then this ray collided with a sphere, do the sphere normal calculation
-
-				}
-				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
-					continue; // Will add in content when the time comes
+				// Run through all of the light sources and cast shadow rays
+				for (int i = 0; i < num_lights; i++) {
+					if (calculateShadowRay(rays[x][y], lights[i].position)) { // If there were no collisions with the shadow ray, then calculate lighting for this light
+						// Do light calculations here
+					}
 				}
 			}
 		}
 	}
+}
+
+bool calculateShadowRay(ray collisionRay, double lightCollisionPoint[]) {
+
+	ray shadowRay; // Create the shadow ray
+
+	// Set up the shadowRay
+
+	// Set the origin of the shadowRay to the origin of the collision
+	shadowRay.origin.x = collisionRay.collisionPoint.x;
+	shadowRay.origin.y = collisionRay.collisionPoint.y;
+	shadowRay.origin.z = collisionRay.collisionPoint.z;
+
+	// Get the two unit rays that goes from:
+	// a) The camera to the light source -- needs to be calculated here
+	// b) The camera to the collision point -- attained through the first function argument
+
+	ray cameraToLight;
+
+	cameraToLight.origin = cameraOrigin;
+	cameraToLight.direction.x = lightCollisionPoint[0] - cameraOrigin.x;
+	cameraToLight.direction.y = lightCollisionPoint[1] - cameraOrigin.y;
+	cameraToLight.direction.z = lightCollisionPoint[2] - cameraOrigin.z;
+
+	// Normalize the direction vector
+	cameraToLight.direction = getUnitVector(cameraToLight.direction);
+
+	// Set the direction of the ray towards the light source (through (b) - (a)), and then normalize it again just to be sure
+	shadowRay.direction.x = cameraToLight.direction.x - collisionRay.direction.x;
+	shadowRay.direction.y = cameraToLight.direction.y - collisionRay.direction.y;
+	shadowRay.direction.z = cameraToLight.direction.z - collisionRay.direction.z;
+
+	shadowRay.direction = getUnitVector(shadowRay.direction);
+
+	// Now check to see if this shadow ray collided with anything
+	if (checkShadowCollisionsSpheres(shadowRay)) return false; // If there is a collision with a sphere, return false
+	if (checkShadowCollisionsTriangles(shadowRay)) return false; // If there is a collision with a Triangle, return false
+
+	return true;
+}
+
+bool checkShadowCollisionsSpheres(ray shadowRay) {
+
+	for (int i = 0; i < num_spheres; i++) {
+		// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
+		double b = 2.0 * ( (shadowRay.direction.x * (shadowRay.origin.x - spheres[i].position[0])) + 
+							(shadowRay.direction.y * (shadowRay.origin.y - spheres[i].position[1])) + 
+							(shadowRay.direction.z * (shadowRay.origin.z - spheres[i].position[2])) ); 
+				
+		// Get (x0 - xc)^2 + (y0 - yc)^2 + (z0 - zc)^2 + (r)^2
+		double c = pow((shadowRay.origin.x - spheres[i].position[0]), 2) + 
+					pow((shadowRay.origin.y - spheres[i].position[1]), 2) + 
+					pow((shadowRay.origin.z - spheres[i].position[2]), 2) - 
+					pow((spheres[i].radius), 2); 
+
+		// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
+		if (pow(b, 2) - (4*c) > 0) { // If there is an intersection, return true				
+			return true;
+		}
+	}
+
+	return false; // No collisions
+}
+
+bool checkShadowCollisionsTriangles(ray shadowRay) {
+	return false;
 }
 
 /*STEP THREE FUNCTIONS END*/
