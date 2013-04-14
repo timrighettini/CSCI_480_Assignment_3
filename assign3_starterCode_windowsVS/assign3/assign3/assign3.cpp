@@ -101,6 +101,13 @@ struct color {
 	unsigned char blue;
 }; 
 
+// Struct that will hold the components of a color from 0 to 1 double
+struct colorFloat {
+	double red; 
+	double green;
+	double blue;
+}; 
+
 // Will hold the componets of a ray
 
 enum collisionWithShape {TRIANGLE, SPHERE};
@@ -112,7 +119,8 @@ struct ray {
 	bool isSetT; // This value will initially be set to false, because t has not been set upon instantiation
 	collisionWithShape collisionShape; // What type of saphe did the ray collide with?
 	point collisionNormal; // Will hold the result of a normal calculation, normalized
-	color collisionColor; // Will hold the color 
+	color collisionColor; // Will hold the color in terms of 0 to 255
+	colorFloat collisionColorFloat; // Will hold the color from the Phong calculations
 	int collisionIndex; // Which shape did the ray collide with, along with the shape type aforementioned?
 	point collisionPoint; // Where the collision actually occurred for this ray, will be easier to reference this way, as it will be used more than once
 };
@@ -130,6 +138,8 @@ double pixelTraversalValueY; // Will hold how far across the image plane is need
 // Note that half of each of these values accounts for the pixel center offset
 
 point cameraOrigin; // Will hold the camera origin, which in the base program will be (0,0,0)
+
+point attenuationValues; // Will be used for the calculation of softening light
 
 /*My Variables END*/
 
@@ -348,6 +358,14 @@ void calculateRays() {
 
 			ray.isSetT = false; // This values needs to be set to false initially, or t will never get set
 
+			// Initialize the floats for phong lighting to 0, so they can be added to
+			// Red calculations
+			ray.collisionColorFloat.red = 0;
+			// Green calculations
+			ray.collisionColorFloat.green = 0;
+			// Blue Calculations
+			ray.collisionColorFloat.blue = 0;
+
 			// Now store this ray into the array data structure, which maps to the image plane (i.e., the first data index [0][0] is the ray shooting through the top left pixel
 			rays[x][y] = ray;
 
@@ -496,6 +514,8 @@ void calculateNormals() {
 					rays[x][y].collisionNormal.x = (rays[x][y].collisionPoint.x - spheres[rays[x][y].collisionIndex].position[0]) / spheres[rays[x][y].collisionIndex].radius;
 					rays[x][y].collisionNormal.y = (rays[x][y].collisionPoint.y - spheres[rays[x][y].collisionIndex].position[1]) / spheres[rays[x][y].collisionIndex].radius;
 					rays[x][y].collisionNormal.z = (rays[x][y].collisionPoint.z - spheres[rays[x][y].collisionIndex].position[2]) / spheres[rays[x][y].collisionIndex].radius;
+					// Normalize the collisonNormal
+					rays[x][y].collisionNormal = getUnitVector(rays[x][y].collisionNormal);
 					numSphereNormals++;
 				}
 				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
@@ -522,11 +542,115 @@ void calculateColor() {
 					ray *shadowRay = new ray;
 					if (calculateShadowRay(&rays[x][y], lights[i].position, shadowRay)) { // If there were no collisions with the shadow ray, then calculate lighting for this light
 						// Do light calculations here
-					}
+						point v; // Set up a point to be used as the v vector of the Phong lighting equation (which is really just the reverse direction of rays[x][y])
+						v.x = -rays[x][y].direction.x;
+						v.y = -rays[x][y].direction.y;
+						v.z = -rays[x][y].direction.z;
 
+						// Get the reflected vector from the shadow ray, which is l
+						point r;
+						// Step one, calculate l dot n
+						double dotResultLN = getDotProduct(shadowRay->direction, rays[x][y].collisionNormal);
+
+						// Step two, calculate n - l
+						r.x = rays[x][y].collisionNormal.x - shadowRay->direction.x;
+						r.y = rays[x][y].collisionNormal.y - shadowRay->direction.y;
+						r.z = rays[x][y].collisionNormal.z - shadowRay->direction.z;
+
+						// Step three, multiply everything together
+						r.x *= 2 * dotResultLN;
+						r.y *= 2 * dotResultLN;
+						r.z *= 2 * dotResultLN;
+
+						// Just to make sure r is normalized
+						r = getUnitVector(r);
+
+						// Get the attenuations calculation before calculating the colors themselves
+						// Convert the light position array into a point
+						point lightPosition;
+						lightPosition.x = lights[i].position[0];
+						lightPosition.y = lights[i].position[1];
+						lightPosition.z = lights[i].position[2];
+
+						double distanceToLight = getDistance(lightPosition, shadowRay->origin);
+						double attenuationPhong = 1 / (attenuationValues.x + (attenuationValues.y * distanceToLight) + (attenuationValues.z * (pow(distanceToLight, 2))) );
+
+						// Calculate the two dot products (l * n) && (r * v) and clamp them if they go below 0 or above 1
+						double dotLN = dotResultLN;
+
+						if (dotLN < 0) { // Clamp to zero for phong lighting
+							dotLN = 0;
+						}
+
+						else if (dotLN > 1) { // Clamp to one for phong lighting
+							dotLN = 1;
+						}
+
+						double dotRV = getDotProduct(r,v);
+
+						if (dotRV < 0) { // Clamp to zero for phong lighting
+							dotRV = 0;
+						}
+
+						else if (dotRV > 1) { // Clamp to one for phong lighting
+							dotRV = 1;
+						}
+
+						// Now do color calculations
+						if (rays[x][y].collisionShape == SPHERE) {
+							// Red calculations
+							rays[x][y].collisionColorFloat.red += /*attenuationPhong **/ lights[i].color[0] * ( 
+								(spheres[rays[x][y].collisionIndex].color_diffuse[0] * dotLN) + 
+								(spheres[rays[x][y].collisionIndex].color_specular[0] * pow(dotRV, spheres[rays[x][y].collisionIndex].shininess)
+								) + ambient_light[0]);
+
+							// Green calculations
+							rays[x][y].collisionColorFloat.green += /*attenuationPhong **/ lights[i].color[1] * ( 
+								(spheres[rays[x][y].collisionIndex].color_diffuse[1] * dotLN) + 
+								(spheres[rays[x][y].collisionIndex].color_specular[1] * pow(dotRV, spheres[rays[x][y].collisionIndex].shininess)
+								) + ambient_light[1]);
+
+							// Blue Calculations
+							rays[x][y].collisionColorFloat.blue += /*attenuationPhong **/ lights[i].color[2] * ( 
+								(spheres[rays[x][y].collisionIndex].color_diffuse[2] * dotLN) + 
+								(spheres[rays[x][y].collisionIndex].color_specular[2] * pow(dotRV, spheres[rays[x][y].collisionIndex].shininess)
+								) + ambient_light[2]);
+						}
+						else if (rays[x][y].collisionShape == TRIANGLE) {
+
+						}
+
+					}
 					// At the end of all of this, make sure to delete the shaow ray to prevent a memory leak
 					delete shadowRay;
 				}
+				// End Clamping
+				// Make sure to clamp the phong values if they are below 0 or above 1
+				if (rays[x][y].collisionColorFloat.red < 0) { // Clamp to 0
+					rays[x][y].collisionColorFloat.red = 0;
+				}
+				else if (rays[x][y].collisionColorFloat.red > 1) { // Clamp to 1
+					rays[x][y].collisionColorFloat.red = 1;
+				}
+
+				if (rays[x][y].collisionColorFloat.green < 0) { // Clamp to 0
+					rays[x][y].collisionColorFloat.green = 0;
+				}
+				else if (rays[x][y].collisionColorFloat.green > 1) { // Clamp to 1
+					rays[x][y].collisionColorFloat.green = 1;
+				}
+
+				if (rays[x][y].collisionColorFloat.blue < 0) { // Clamp to 0
+					rays[x][y].collisionColorFloat.blue = 0;
+				}
+				else if (rays[x][y].collisionColorFloat.blue > 1) { // Clamp to 1
+					rays[x][y].collisionColorFloat.blue = 1;
+				}
+
+				// Finally, convert these floats into the char format
+				rays[x][y].collisionColor.red = rays[x][y].collisionColorFloat.red * 256;
+				rays[x][y].collisionColor.green = rays[x][y].collisionColorFloat.green * 256;
+				rays[x][y].collisionColor.blue = rays[x][y].collisionColorFloat.blue * 256;
 			}
 		}
 	}
@@ -627,7 +751,7 @@ void draw_scene()
     glBegin(GL_POINTS);
     for(y=0;y < HEIGHT;y++)
     {
-      plot_pixel(x,y,x%256,y%256,(x+y)%256);
+		plot_pixel(x,y,rays[x][y].collisionColor.red,rays[x][y].collisionColor.green,rays[x][y].collisionColor.blue);
     }
     glEnd();
     glFlush();
@@ -806,6 +930,12 @@ void init()
 
   glClearColor(0,0,0,0);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  // Set any variables that needs to be set for rayTracing here
+  // Set the attenuation variables for the phong calculations
+  attenuationValues.x = 1;
+  attenuationValues.y = 1;
+  attenuationValues.z = 1;
 
   // Do the raytracing calculations
   doStepOne(); // Uniformly send out rays from one location
