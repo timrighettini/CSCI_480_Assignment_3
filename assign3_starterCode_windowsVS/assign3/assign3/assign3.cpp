@@ -560,13 +560,13 @@ bool calculateShadowRay(ray collisionRay, double lightCollisionPoint[]) {
 	shadowRay.direction = getUnitVector(shadowRay.direction);
 
 	// Now check to see if this shadow ray collided with anything
-	if (checkShadowCollisionsSpheres(shadowRay)) return false; // If there is a collision with a sphere, return false
+	if (checkShadowCollisionsSpheres(shadowRay, lightCollisionPoint)) return false; // If there is a collision with a sphere, return false
 	if (checkShadowCollisionsTriangles(shadowRay)) return false; // If there is a collision with a Triangle, return false
 
 	return true;
 }
 
-bool checkShadowCollisionsSpheres(ray shadowRay) {
+bool checkShadowCollisionsSpheres(ray shadowRay, double lightCollisionPoint[]) {
 
 	for (int i = 0; i < num_spheres; i++) {
 		// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
@@ -582,7 +582,21 @@ bool checkShadowCollisionsSpheres(ray shadowRay) {
 
 		// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
 		if (pow(b, 2) - (4*c) > 0) { // If there is an intersection, return true				
-			return true;
+			// Calculate the point of collision
+			shadowRay.collisionPoint.x = shadowRay.origin.x + (shadowRay.direction.x) * shadowRay.t;
+			shadowRay.collisionPoint.y = shadowRay.origin.y + (shadowRay.direction.y) * shadowRay.t;
+			shadowRay.collisionPoint.z = shadowRay.origin.z + (shadowRay.direction.z) * shadowRay.t;
+
+			// Convert the light position array into a point
+			point lightPosition;
+			lightPosition.x = lightCollisionPoint[0];
+			lightPosition.y = lightCollisionPoint[1];
+			lightPosition.z = lightCollisionPoint[2];
+			
+			// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
+			// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
+			if (getDistance(shadowRay.collisionPoint, shadowRay.origin) < getDistance(lightPosition, shadowRay.origin)) // If so, return true
+				return true;
 		}
 	}
 
