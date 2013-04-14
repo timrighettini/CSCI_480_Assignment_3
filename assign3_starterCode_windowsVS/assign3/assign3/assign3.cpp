@@ -553,17 +553,22 @@ void calculateColor() {
 						double dotResultLN = getDotProduct(shadowRay->direction, rays[x][y].collisionNormal);
 
 						// Step two, calculate n - l
-						r.x = rays[x][y].collisionNormal.x - shadowRay->direction.x;
-						r.y = rays[x][y].collisionNormal.y - shadowRay->direction.y;
-						r.z = rays[x][y].collisionNormal.z - shadowRay->direction.z;
+						point pointN_L;
+						pointN_L.x = rays[x][y].collisionNormal.x - shadowRay->direction.x;
+						pointN_L.y = rays[x][y].collisionNormal.y - shadowRay->direction.y;
+						pointN_L.z = rays[x][y].collisionNormal.z - shadowRay->direction.z;
 
 						// Step three, multiply everything together
-						r.x *= 2 * dotResultLN;
-						r.y *= 2 * dotResultLN;
-						r.z *= 2 * dotResultLN;
+						r.x = (2 * (dotResultLN * rays[x][y].collisionNormal.x)) - shadowRay->direction.x;
+						r.y = (2 * (dotResultLN * rays[x][y].collisionNormal.y)) - shadowRay->direction.y;
+						r.z = (2 * (dotResultLN * rays[x][y].collisionNormal.z)) - shadowRay->direction.z;
 
 						// Just to make sure r is normalized
 						r = getUnitVector(r);
+
+						if (getDotProduct(r,r) == 0) {
+							r = rays[x][y].collisionNormal;
+						}
 
 						// Get the attenuations calculation before calculating the colors themselves
 						// Convert the light position array into a point
