@@ -185,7 +185,7 @@ double getDotProduct(point a, point b) { // Return the dot product between two v
 }
 
 double getDistance(point a, point b) { // Will use the distance formula to return a distance
-	return sqrt(pow((b.x - a.x), 2) + pow((b.y - a.y), 2));
+	return sqrt(pow((b.x - a.x), 2) + pow((b.y - a.y), 2) + + pow((b.z - a.z), 2));
 }
 
 double getQuadraticFormula(boolean isLowerVal, double b, double c) { // Will use the quadratic value to return the two points of the sphere intersection
@@ -648,9 +648,9 @@ void calculateColor() {
 				}
 
 				// Finally, convert these floats into the char format
-				rays[x][y].collisionColor.red = rays[x][y].collisionColorFloat.red * 256;
-				rays[x][y].collisionColor.green = rays[x][y].collisionColorFloat.green * 256;
-				rays[x][y].collisionColor.blue = rays[x][y].collisionColorFloat.blue * 256;
+				rays[x][y].collisionColor.red = rays[x][y].collisionColorFloat.red * 255;
+				rays[x][y].collisionColor.green = rays[x][y].collisionColorFloat.green * 255;
+				rays[x][y].collisionColor.blue = rays[x][y].collisionColorFloat.blue * 255;
 			}
 		}
 	}
@@ -711,6 +711,32 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 		// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
 		if (pow(b, 2) - (4*c) > 0) { // If there is an intersection, return true				
 			// Calculate the point of collision
+			double t_0 = getQuadraticFormula(true,b,c); 
+			double t_1 = getQuadraticFormula(false,b,c);
+			// If t_0 or t_1 are NOT > 0, then go into the next loop iteration
+			if (t_0 <= 0 && t_1 <= 0) { // There will always be a tangental collision with one of the spheres at t = 0 for the shadow ray, and this case must be nullified, since !(t > 0)
+				continue;
+			}
+
+			// If one of these collisions is at t > 0, though, then there really was a collision, and this needs to be accounted for
+			
+			if ((t_0 < t_1)) { // If t0 is the first intersection, store that value within the ray to easily find where the collision occurred in space
+				if (t_0 < shadowRay->t || !shadowRay->isSetT) { // If the new t is closer to the camera than the old t, replace the old t with the new one, or the ray's t needs to be set for the first time
+					shadowRay->t = t_0;
+					shadowRay->isSetT = true;
+					shadowRay->collisionShape = SPHERE;
+					shadowRay->collisionIndex = i;
+				}
+			}
+			else { // If t1 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
+				if (t_1 < shadowRay->t || !shadowRay->isSetT) { // If the new t is closer to the camera than the old t, replace the old t with the new one, or the ray's t needs to be set for the first time
+					shadowRay->t = t_1;
+					shadowRay->isSetT = true;
+					shadowRay->collisionShape = SPHERE;
+					shadowRay->collisionIndex = i;
+				}
+			}
+
 			shadowRay->collisionPoint.x = shadowRay->origin.x + (shadowRay->direction.x) * shadowRay->t;
 			shadowRay->collisionPoint.y = shadowRay->origin.y + (shadowRay->direction.y) * shadowRay->t;
 			shadowRay->collisionPoint.z = shadowRay->origin.z + (shadowRay->direction.z) * shadowRay->t;
