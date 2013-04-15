@@ -151,6 +151,7 @@ point getUnitVector(point a);
 double getDotProduct(point a, point b);
 double getDistance(point a, point b);
 double getQuadraticFormula(boolean isLowerVal, double b, double c);
+double getTriangleArea(point a, point b, point c);
 
 point getCrossProduct(point a, point b) {
 	point c; // The result of the cross product
@@ -195,6 +196,10 @@ double getQuadraticFormula(boolean isLowerVal, double b, double c) { // Will use
 	else
 		t = (-b + ( sqrt(pow(b, 2) - (4*c)) )) / 2; // Get the higher value of the quadratic formula
 	return t;
+}
+
+double getTriangleArea(point a, point b, point c) {
+	return 0.5 * ( ((b.x - a.x) * (c.y - a.y)) - ((c.x - a.x) * (b.y - a.y)) );
 }
 
 /*My Math Functions END*/
@@ -489,7 +494,105 @@ void checkCollisionsSpheres() {
 
 }
 void checkCollisionsPolygons() {
+	int numTriangleCollisions = 0; // Value that tallies all of the sphere collisions
 
+	// Loop through all of the spheres
+	for (int i = 0; i < num_triangles; i++) {
+		for (int x = 0; x < WIDTH; x++) {
+			for (int y = 0; y < HEIGHT; y++) {
+
+				// First, find the d value for the plane that the triangle exists on
+				// Create vector from Point A->B (B-A) and Point A->C (C-A)
+				point ab;
+				ab.x = triangles[i].v[1].position[0] - triangles[i].v[0].position[0];
+				ab.y = triangles[i].v[1].position[1] - triangles[i].v[0].position[1];
+				ab.z = triangles[i].v[1].position[2] - triangles[i].v[0].position[2];
+
+				point ac;
+				ac.x = triangles[i].v[2].position[0] - triangles[i].v[0].position[0];
+				ac.y = triangles[i].v[2].position[1] - triangles[i].v[0].position[1];
+				ac.z = triangles[i].v[2].position[2] - triangles[i].v[0].position[2];
+
+				// Get the Cross of these two points, which contains the A,B,C values for the plane
+				point planeXYZ = getCrossProduct(ab,ac);
+				
+				// Now let's find -d
+				double d = (planeXYZ.x * triangles[i].v[0].position[0]) + 
+					       (planeXYZ.y * triangles[i].v[0].position[1]) + 
+						   (planeXYZ.z * triangles[i].v[0].position[2]);
+				d *= -1; // Make the d go to the appropriate side of the equation
+
+				// Since all triangles appear within one plane, it is safe to assume that the normals at each vertex (and throughout the test of the triangle) are the same
+				// Create points for the plane equation and the normal
+				point normal;
+				normal.x = triangles[i].v[0].normal[0];
+				normal.y = triangles[i].v[0].normal[1];
+				normal.z = triangles[i].v[0].normal[2];
+
+				// Now attempt to find a t that satisfies the triangle collision equation
+
+				if (getDotProduct(normal, rays[x][y].direction) == 0) { // Calculation needs to abort to prevent divide by 0 error if true
+					continue;
+				}
+
+				double t = -(getDotProduct(normal, planeXYZ) + d)/(getDotProduct(normal, rays[x][y].direction));
+
+				// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
+				if (t > 0) { // Do the calculation, else, continue to the next loop iteration without any calculation					
+
+					// Calculate the collision point for reference
+					point planeCollisionPoint;
+					planeCollisionPoint.x = rays[x][y].origin.x + (rays[x][y].direction.x) * rays[x][y].t;
+					planeCollisionPoint.y = rays[x][y].origin.y + (rays[x][y].direction.y) * rays[x][y].t;
+					planeCollisionPoint.z = rays[x][y].origin.z + (rays[x][y].direction.z) * rays[x][y].t;
+
+					// Since the collision point lies within the plane, check to see if this point actually resides within the triangle
+					// Set up the four points for use with barycentric coordinates
+
+					point c0; 
+					point c1; 
+					point c2; 					
+
+					c0.x = triangles[i].v[0].position[0];
+					c0.y = triangles[i].v[0].position[1];
+					c0.z = triangles[i].v[0].position[2];
+
+					c1.x = triangles[i].v[1].position[0];
+					c1.y = triangles[i].v[1].position[1];
+					c1.z = triangles[i].v[1].position[2];
+
+					c2.x = triangles[i].v[2].position[0];
+					c2.y = triangles[i].v[2].position[1];
+					c2.z = triangles[i].v[2].position[2];
+
+					// Get all of the areas for the barycentric coordinates
+					double alpha   = getTriangleArea(planeCollisionPoint, c1, c2)/getTriangleArea(c0,c1,c2);
+					double beta    = getTriangleArea(c0, planeCollisionPoint, c2)/getTriangleArea(c0,c1,c2);
+					double charlie = 1 - alpha - beta; // Hack out the third coordinate from the other two to save on FP divisions
+
+					if (alpha > 0 && beta > 0 && charlie > 0) { // If all points are positive
+						if (t < rays[x][y].t || rays[x][y].isSetT == false) { // If t < current t, or if t is not set
+							rays[x][y].t = t;
+							rays[x][y].isSetT = true;
+							rays[x][y].collisionShape = TRIANGLE;
+							rays[x][y].collisionIndex = i;
+
+							// Calculate the collision point for reference
+							rays[x][y].collisionPoint.x = planeCollisionPoint.x;
+							rays[x][y].collisionPoint.y = planeCollisionPoint.y;
+							rays[x][y].collisionPoint.z = planeCollisionPoint.z;
+
+							// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
+							numTriangleCollisions++;
+						}
+					}
+				}
+			}
+		}
+	}
+	// Print this value, make sure that it prints correctly
+	std::cout << "-----RESULTS OF STEP TWO: PART TWO-----" << std::endl;
+	std::cout << "Number of Triangle Collisions: " << numTriangleCollisions << std::endl;
 }
 
 /*STEP TWO FUNCTIONS END*/
@@ -497,7 +600,7 @@ void checkCollisionsPolygons() {
 /*STEP THREE FUNCTIONS START*/
 
 void doStepThree() { 
-	std::cout << "-----Completing Step THREE-----"<< std::endl;
+	std::cout << "-----Completing Step Three-----"<< std::endl;
 	calculateNormals();
 	calculateColor();
 }
@@ -519,7 +622,7 @@ void calculateNormals() {
 					numSphereNormals++;
 				}
 				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
-					continue; // Will add in content when the time comes
+					continue;
 					numTriangleNormals++;
 				}
 			}
