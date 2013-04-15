@@ -540,6 +540,7 @@ void calculateColor() {
 				for (int i = 0; i < num_lights; i++) {
 					// Make a shadowRay pointer, it will be needed for the lighting calculations
 					ray *shadowRay = new ray;
+					shadowRay->isSetT = false; // Make sure that this value is set to false, or else things will not work
 					if (calculateShadowRay(&rays[x][y], lights[i].position, shadowRay)) { // If there were no collisions with the shadow ray, then calculate lighting for this light
 						// Do light calculations here
 						point v; // Set up a point to be used as the v vector of the Phong lighting equation (which is really just the reverse direction of rays[x][y])
@@ -578,7 +579,7 @@ void calculateColor() {
 						lightPosition.z = lights[i].position[2];
 
 						double distanceToLight = getDistance(lightPosition, shadowRay->origin);
-						double attenuationPhong = 1 / (attenuationValues.x + (attenuationValues.y * distanceToLight) + (attenuationValues.z * (pow(distanceToLight, 2))) );
+						double attenuationPhong = 1.0 / (attenuationValues.x + (attenuationValues.y * distanceToLight) + (attenuationValues.z * (pow(distanceToLight, 2))) );
 
 						// Calculate the two dot products (l * n) && (r * v) and clamp them if they go below 0 or above 1
 						double dotLN = dotResultLN;
@@ -626,7 +627,12 @@ void calculateColor() {
 						}
 
 					}
-					// At the end of all of this, make sure to delete the shaow ray to prevent a memory leak
+					else {
+						rays[x][y].collisionColorFloat.red += 0;
+						rays[x][y].collisionColorFloat.blue += 0;
+						rays[x][y].collisionColorFloat.green += 0;
+					}
+					// At the end of all of this, make sure to delete the shadow ray to prevent a memory leak
 					delete shadowRay;
 				}
 				// End Clamping
@@ -719,13 +725,13 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 			double t_0 = getQuadraticFormula(true,b,c); 
 			double t_1 = getQuadraticFormula(false,b,c);
 			// If t_0 or t_1 are NOT > 0, then go into the next loop iteration
-			if (t_0 <= 0 && t_1 <= 0) { // There will always be a tangental collision with one of the spheres at t = 0 for the shadow ray, and this case must be nullified, since !(t > 0)
+			if (t_0 <= 0.00001 && t_1 <= 0.00001) { // There will always be a tangental collision with one of the spheres at t = 0 for the shadow ray, and this case must be nullified, since !(t > 0)
 				continue;
 			}
 
 			// If one of these collisions is at t > 0, though, then there really was a collision, and this needs to be accounted for
 			
-			if ((t_0 < t_1)) { // If t0 is the first intersection, store that value within the ray to easily find where the collision occurred in space
+			if ((t_0 < t_1) && t_0 > 0.00001) { // If t0 is the first intersection, store that value within the ray to easily find where the collision occurred in space
 				if (t_0 < shadowRay->t || !shadowRay->isSetT) { // If the new t is closer to the camera than the old t, replace the old t with the new one, or the ray's t needs to be set for the first time
 					shadowRay->t = t_0;
 					shadowRay->isSetT = true;
@@ -733,7 +739,7 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 					shadowRay->collisionIndex = i;
 				}
 			}
-			else { // If t1 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
+			else if (t_1 > 0.00001) { // If t1 is the first intersection, store that value within the ray to easuly find where the collision occurred in space
 				if (t_1 < shadowRay->t || !shadowRay->isSetT) { // If the new t is closer to the camera than the old t, replace the old t with the new one, or the ray's t needs to be set for the first time
 					shadowRay->t = t_1;
 					shadowRay->isSetT = true;
@@ -782,7 +788,7 @@ void draw_scene()
     glBegin(GL_POINTS);
     for(y=0;y < HEIGHT;y++)
     {
-		plot_pixel(x,y,rays[x][y].collisionColor.red,rays[x][y].collisionColor.green,rays[x][y].collisionColor.blue);
+		plot_pixel(x,HEIGHT-y-1,rays[x][y].collisionColor.red,rays[x][y].collisionColor.green,rays[x][y].collisionColor.blue);
     }
     glEnd();
     glFlush();
