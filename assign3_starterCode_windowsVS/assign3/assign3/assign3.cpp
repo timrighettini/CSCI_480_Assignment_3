@@ -31,7 +31,7 @@ char *filename=0;
 //different display modes
 #define MODE_DISPLAY 1
 #define MODE_JPEG 2
-int mode=MODE_DISPLAY;
+int mode=MODE_JPEG;
 
 //you may want to make these smaller for debugging purposes
 #define WIDTH 640
@@ -446,7 +446,7 @@ void checkCollisionsSpheres() {
 	// Loop through all of the spheres
 	for (int i = 0; i < num_spheres; i++) {
 		for (int x = 0; x < WIDTH; x++) {
-			for (int y = 0; y < HEIGHT; y++) {
+			for (int y = 0; y < HEIGHT; y++) {				
 				// Get xd^2 + yd^2 + zd^2 for the ray
 				//double a = getDotProduct(rays[x][y].direction, rays[x][y].direction); 
 
@@ -1047,6 +1047,10 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 			double beta    = getTriangleArea(v0, planeCollisionPoint, v2)/getTriangleArea(v0,v1,v2);
 			double charlie = 1 - alpha - beta; // Hack out the third coordinate from the other two to save on FP divisions
 
+			if (planeCollisionPoint.x > -1.2 && planeCollisionPoint.y < 1 && alpha > 0 && beta > 0 && charlie > 0 && (abs(1 - alpha - beta - charlie) < 0.0001) && t > 0.00001) {
+				//std::cout << std::endl;
+			}
+
 			if (alpha > 0 && beta > 0 && charlie > 0 && (abs(1 - alpha - beta - charlie) < 0.0001) && t > 0.00001) { // If all points are positive
 				if (t < shadowRay->t || shadowRay->isSetT == false) { // If t < current t, or if t is not set
 					shadowRay->t = t;
@@ -1297,7 +1301,7 @@ void idle()
   {
       draw_scene();
       if(mode == MODE_JPEG)
-	save_jpg();
+			save_jpg();
     }
   once=1;
 }
