@@ -123,6 +123,7 @@ struct ray {
 	colorFloat collisionColorFloat; // Will hold the color from the Phong calculations
 	int collisionIndex; // Which shape did the ray collide with, along with the shape type aforementioned?
 	point collisionPoint; // Where the collision actually occurred for this ray, will be easier to reference this way, as it will be used more than once
+	point barycentricRatios; // Will hold the alpha (x), beta (y), and gamma, or charlie, (z) values determined from the barycentric calculations
 };
 
 double aspectRatio; // Will hold the aspect ratio as a decimal value -- used for the calculation of the image plane
@@ -240,7 +241,7 @@ void checkCollisionsPolygons(); // This will loop through all of the triangles a
 void doStepThree(); // This will complete all of the normal and lighting calculations, depending on what was collided with
 void calculateNormals(); // This will calculate the normals for both rays that intersected with spheres and triangles -- different lighting equations will be derived depending on the "shape" parameter of a ray
 void calculateColor(); // This will calculate phong lighting on every ray that collided with something, else, the background color will be used
-bool calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
+void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
 bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the spheres to see if there is a collision with a shadow ray
 bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the triangles to see if there is a collision with a shadow ray
 
@@ -535,23 +536,6 @@ void checkCollisionsPolygons() {
 				ac.z = triangles[i].v[2].position[2] - triangles[i].v[0].position[2];
 				//*/
 
-				// Set up the points for use with barycentric coordinates AND collision detection
-				point v0; 
-				point v1; 
-				point v2; 					
-
-				v0.x = triangles[i].v[0].position[0];
-				v0.y = triangles[i].v[0].position[1];
-				v0.z = triangles[i].v[0].position[2];
-
-				v1.x = triangles[i].v[1].position[0];
-				v1.y = triangles[i].v[1].position[1];
-				v1.z = triangles[i].v[1].position[2];
-
-				v2.x = triangles[i].v[2].position[0];
-				v2.y = triangles[i].v[2].position[1];
-				v2.z = triangles[i].v[2].position[2];
-
 				// Get the Cross of these two points, which contains the A,B,C values for the plane
 				point normal = getCrossProduct(ab,ac);
 
@@ -592,8 +576,11 @@ void checkCollisionsPolygons() {
 					planeCollisionPoint.z = rays[x][y].origin.z + (rays[x][y].direction.z) * t;
 
 					// Since the collision point lies within the plane, check to see if this point actually resides within the triangle
-					// Set up the four points for use with barycentric coordinates
-					/*
+				
+					point v0; 
+					point v1; 
+					point v2; 					
+
 					v0.x = triangles[i].v[0].position[0];
 					v0.y = triangles[i].v[0].position[1];
 					v0.z = triangles[i].v[0].position[2];
@@ -605,7 +592,6 @@ void checkCollisionsPolygons() {
 					v2.x = triangles[i].v[2].position[0];
 					v2.y = triangles[i].v[2].position[1];
 					v2.z = triangles[i].v[2].position[2];
-					*/
 
 					// Get all of the areas for the barycentric coordinates
 					double alpha   = getTriangleArea(planeCollisionPoint, v1, v2)/getTriangleArea(v0,v1,v2);
@@ -623,6 +609,11 @@ void checkCollisionsPolygons() {
 							rays[x][y].collisionPoint.x = planeCollisionPoint.x;
 							rays[x][y].collisionPoint.y = planeCollisionPoint.y;
 							rays[x][y].collisionPoint.z = planeCollisionPoint.z;
+
+							// Hold the BaryCentric ratios for further use with shading
+							rays[x][y].barycentricRatios.x = alpha;
+							rays[x][y].barycentricRatios.y = beta;
+							rays[x][y].barycentricRatios.z = charlie;
 
 							// Note that these values may be overwritten in the triangle test if there is indeed a value smaller than the current t that comes from that test
 							numTriangleCollisions++;
@@ -664,7 +655,20 @@ void calculateNormals() {
 					numSphereNormals++;
 				}
 				else if (rays[x][y].collisionShape == TRIANGLE) { // Then this ray collided with a triangle, do the triangle normal calculation
-					continue;
+					// Use barycentric coordinates to find the interpolated norms of the vertices
+					rays[x][y].collisionNormal.x = (rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].normal[0]) +
+						                           (rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].normal[0]) +
+												   (rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].normal[0]);
+
+					rays[x][y].collisionNormal.y = (rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].normal[1]) +
+												   (rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].normal[1]) +
+				    							   (rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].normal[1]);
+
+					rays[x][y].collisionNormal.z = (rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].normal[2]) +
+						                           (rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].normal[2]) +
+												   (rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].normal[2]);
+					// Normalize the collisonNormal
+					rays[x][y].collisionNormal = getUnitVector(rays[x][y].collisionNormal);
 					numTriangleNormals++;
 				}
 			}
@@ -686,7 +690,8 @@ void calculateColor() {
 					// Make a shadowRay pointer, it will be needed for the lighting calculations
 					ray *shadowRay = new ray;
 					shadowRay->isSetT = false; // Make sure that this value is set to false, or else things will not work
-					if (calculateShadowRay(&rays[x][y], lights[i].position, shadowRay)) { // If there were no collisions with the shadow ray, then calculate lighting for this light
+					calculateShadowRay(&rays[x][y], lights[i].position, shadowRay);
+					if (shadowRay->isSetT == false) { // If there were no collisions with the shadow ray, then calculate lighting for this light
 						// Do light calculations here
 						point v; // Set up a point to be used as the v vector of the Phong lighting equation (which is really just the reverse direction of rays[x][y])
 						v.x = -rays[x][y].direction.x;
@@ -768,11 +773,72 @@ void calculateColor() {
 								) + ambient_light[2]);
 						}
 						else if (rays[x][y].collisionShape == TRIANGLE) {
-								rays[x][y].collisionColorFloat.red += 1;
-								rays[x][y].collisionColorFloat.green += 1;
-								rays[x][y].collisionColorFloat.blue += 1;
-						}
+							// Red calculations
+							rays[x][y].collisionColorFloat.red += /*attenuationPhong **/ lights[i].color[0] * ( 
+								// Diffuse Lighting
+								((
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].color_diffuse[0]) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].color_diffuse[0]) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].color_diffuse[0])
+								) * 
+								dotLN ) +
+								// Specular Lighting
+								((
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].color_specular[0]) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].color_specular[0]) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].color_specular[0])								
+								) *
+								pow(dotRV, (
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].shininess) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].shininess) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].shininess)	
+								))) ) + 
+							ambient_light[0];
+								
+							// Green Calculations
+							rays[x][y].collisionColorFloat.green += /*attenuationPhong **/ lights[i].color[1] * ( 
+								// Diffuse Lighting
+								((
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].color_diffuse[1]) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].color_diffuse[1]) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].color_diffuse[1])
+								) * 
+								dotLN ) +
+								// Specular Lighting
+								((
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].color_specular[1]) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].color_specular[1]) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].color_specular[1])								
+								) *
+								pow(dotRV, (
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].shininess) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].shininess) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].shininess)	
+								))) ) + 
+							ambient_light[1];
 
+							// Blue Calculations
+							rays[x][y].collisionColorFloat.blue += /*attenuationPhong **/ lights[i].color[2] * ( 
+								// Diffuse Lighting
+								((
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].color_diffuse[2]) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].color_diffuse[2]) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].color_diffuse[2])
+								) * 
+								dotLN ) +
+								// Specular Lighting
+								((
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].color_specular[2]) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].color_specular[2]) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].color_specular[2])								
+								) *
+								pow(dotRV, (
+									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].shininess) + 
+									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].shininess) +
+									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].shininess)	
+								))) ) + 
+							ambient_light[2];
+						}
 					}
 					else {
 						rays[x][y].collisionColorFloat.red += 0;
@@ -814,7 +880,7 @@ void calculateColor() {
 	}
 }
 
-bool calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay) {
+void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay) {
 
 	// Set the origin of the shadowRay to the origin of the collision
 	shadowRay->origin.x = collisionRay->collisionPoint.x;
@@ -846,10 +912,10 @@ bool calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *sh
 	shadowRay->direction = getUnitVector(shadowRay->direction);
 
 	// Now check to see if this shadow ray collided with anything
-	if (checkShadowCollisionsSpheres(shadowRay, lightCollisionPoint)) return false; // If there is a collision with a sphere, return false
-	if (checkShadowCollisionsTriangles(shadowRay, lightCollisionPoint)) return false; // If there is a collision with a Triangle, return false
+	checkShadowCollisionsSpheres(shadowRay, lightCollisionPoint); 
+	checkShadowCollisionsTriangles(shadowRay, lightCollisionPoint);
 
-	return true;
+	return;
 }
 
 bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) {
@@ -916,6 +982,99 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 }
 
 bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]) {
+	// Loop through all of the spheres
+	for (int i = 0; i < num_triangles; i++) {
+		// First, find the d value for the plane that the triangle exists on
+		// Create vector from Point A->B (B-A) and Point A->C (C-A)
+		point ab;
+		ab.x = triangles[i].v[1].position[0] - triangles[i].v[0].position[0];
+		ab.y = triangles[i].v[1].position[1] - triangles[i].v[0].position[1];
+		ab.z = triangles[i].v[1].position[2] - triangles[i].v[0].position[2];
+
+		point ac;
+		ac.x = triangles[i].v[2].position[0] - triangles[i].v[0].position[0];
+		ac.y = triangles[i].v[2].position[1] - triangles[i].v[0].position[1];
+		ac.z = triangles[i].v[2].position[2] - triangles[i].v[0].position[2];
+
+		// Get the Cross of these two points, which contains the A,B,C values for the plane
+		point normal = getCrossProduct(ab,ac);
+
+		// Now let's find -d
+		double d = (normal.x * triangles[i].v[0].position[0]) + (normal.y * triangles[i].v[0].position[1]) + (normal.z * triangles[i].v[0].position[2]);
+		d *= -1; // Make the d go to the appropriate side of the equation
+
+		// Since all triangles appear within one plane, it is safe to assume that the normals at each vertex (and throughout the test of the triangle) are the same
+		// Create points for the plane equation and the normal
+		// Now attempt to find a t that satisfies the triangle collision equation
+
+		if (getDotProduct(normal, shadowRay->direction) == 0) { // Calculation needs to abort to prevent divide by 0 error if true
+			continue;
+		}
+
+		double t = -(getDotProduct(normal, shadowRay->origin) + d)/(getDotProduct(normal, shadowRay->direction));
+
+		// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
+		if (t > 0.0001) { // Do the calculation, else, continue to the next loop iteration without any calculation				
+
+			// Calculate the collision point for reference
+			point planeCollisionPoint;
+			planeCollisionPoint.x = shadowRay->origin.x + (shadowRay->direction.x) * t;
+			planeCollisionPoint.y = shadowRay->origin.y + (shadowRay->direction.y) * t;
+			planeCollisionPoint.z = shadowRay->origin.z + (shadowRay->direction.z) * t;
+
+			// Since the collision point lies within the plane, check to see if this point actually resides within the triangle				
+			point v0; 
+			point v1; 
+			point v2;
+
+			v0.x = triangles[i].v[0].position[0];
+			v0.y = triangles[i].v[0].position[1];
+			v0.z = triangles[i].v[0].position[2];
+
+			v1.x = triangles[i].v[1].position[0];
+			v1.y = triangles[i].v[1].position[1];
+			v1.z = triangles[i].v[1].position[2];
+
+			v2.x = triangles[i].v[2].position[0];
+			v2.y = triangles[i].v[2].position[1];
+			v2.z = triangles[i].v[2].position[2];
+
+			// Get all of the areas for the barycentric coordinates
+			double alpha   = getTriangleArea(planeCollisionPoint, v1, v2)/getTriangleArea(v0,v1,v2);
+			double beta    = getTriangleArea(v0, planeCollisionPoint, v2)/getTriangleArea(v0,v1,v2);
+			double charlie = 1 - alpha - beta; // Hack out the third coordinate from the other two to save on FP divisions
+
+			if (alpha > 0 && beta > 0 && charlie > 0 && (abs(1 - alpha - beta - charlie) < 0.0001) && t > 0.00001) { // If all points are positive
+				if (t < shadowRay->t || shadowRay->isSetT == false) { // If t < current t, or if t is not set
+					shadowRay->t = t;
+					shadowRay->isSetT = true;
+					shadowRay->collisionShape = TRIANGLE;
+					shadowRay->collisionIndex = i;
+
+					// Calculate the collision point for reference
+					shadowRay->collisionPoint.x = planeCollisionPoint.x;
+					shadowRay->collisionPoint.y = planeCollisionPoint.y;
+					shadowRay->collisionPoint.z = planeCollisionPoint.z;
+
+					// Hold the BaryCentric ratios for further use with shading
+					shadowRay->barycentricRatios.x = alpha;
+					shadowRay->barycentricRatios.y = beta;
+					shadowRay->barycentricRatios.z = charlie;
+
+					// Convert the light position array into a point
+					point lightPosition;
+					lightPosition.x = lightCollisionPoint[0];
+					lightPosition.y = lightCollisionPoint[1];
+					lightPosition.z = lightCollisionPoint[2];
+			
+					// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
+					// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
+					if (getDistance(shadowRay->collisionPoint, shadowRay->origin) < getDistance(lightPosition, shadowRay->origin)) // If so, return true
+						return true;
+				}
+			}
+		}
+	}
 	return false;
 }
 
