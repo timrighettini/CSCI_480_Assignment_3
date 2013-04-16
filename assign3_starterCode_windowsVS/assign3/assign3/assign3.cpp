@@ -385,13 +385,13 @@ void calculateRays() {
 
 			ray.isSetT = false; // This values needs to be set to false initially, or t will never get set
 
-			// Initialize the floats for phong lighting to 0, so they can be added to
+			// Initialize the floats for phong lighting to the ambient light upon initialization to save some effort later.
 			// Red calculations
-			ray.collisionColorFloat.red = 0;
+			ray.collisionColorFloat.red = ambient_light[0];
 			// Green calculations
-			ray.collisionColorFloat.green = 0;
+			ray.collisionColorFloat.green = ambient_light[1];
 			// Blue Calculations
-			ray.collisionColorFloat.blue = 0;
+			ray.collisionColorFloat.blue = ambient_light[2];
 
 			// Now store this ray into the array data structure, which maps to the image plane (i.e., the first data index [0][0] is the ray shooting through the top left pixel
 			rays[x][y] = ray;
@@ -758,19 +758,19 @@ void calculateColor() {
 							rays[x][y].collisionColorFloat.red += /*attenuationPhong **/ lights[i].color[0] * ( 
 								(spheres[rays[x][y].collisionIndex].color_diffuse[0] * dotLN) + 
 								(spheres[rays[x][y].collisionIndex].color_specular[0] * pow(dotRV, spheres[rays[x][y].collisionIndex].shininess)
-								) + ambient_light[0]);
+								));
 
 							// Green calculations
 							rays[x][y].collisionColorFloat.green += /*attenuationPhong **/ lights[i].color[1] * ( 
 								(spheres[rays[x][y].collisionIndex].color_diffuse[1] * dotLN) + 
 								(spheres[rays[x][y].collisionIndex].color_specular[1] * pow(dotRV, spheres[rays[x][y].collisionIndex].shininess)
-								) + ambient_light[1]);
+								));
 
 							// Blue Calculations
 							rays[x][y].collisionColorFloat.blue += /*attenuationPhong **/ lights[i].color[2] * ( 
 								(spheres[rays[x][y].collisionIndex].color_diffuse[2] * dotLN) + 
 								(spheres[rays[x][y].collisionIndex].color_specular[2] * pow(dotRV, spheres[rays[x][y].collisionIndex].shininess)
-								) + ambient_light[2]);
+								));
 						}
 						else if (rays[x][y].collisionShape == TRIANGLE) {
 							// Red calculations
@@ -792,8 +792,7 @@ void calculateColor() {
 									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].shininess) + 
 									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].shininess) +
 									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].shininess)	
-								))) ) + 
-							ambient_light[0];
+								))) );
 								
 							// Green Calculations
 							rays[x][y].collisionColorFloat.green += /*attenuationPhong **/ lights[i].color[1] * ( 
@@ -814,8 +813,7 @@ void calculateColor() {
 									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].shininess) + 
 									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].shininess) +
 									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].shininess)	
-								))) ) + 
-							ambient_light[1];
+								))) );
 
 							// Blue Calculations
 							rays[x][y].collisionColorFloat.blue += /*attenuationPhong **/ lights[i].color[2] * ( 
@@ -836,8 +834,7 @@ void calculateColor() {
 									(rays[x][y].barycentricRatios.x * triangles[rays[x][y].collisionIndex].v[0].shininess) + 
 									(rays[x][y].barycentricRatios.y * triangles[rays[x][y].collisionIndex].v[1].shininess) +
 									(rays[x][y].barycentricRatios.z * triangles[rays[x][y].collisionIndex].v[2].shininess)	
-								))) ) + 
-							ambient_light[2];
+								))) );
 						}
 					}
 					else {
@@ -909,6 +906,12 @@ void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *sh
 	// Make sure to delete the cameraToLight ray, since it is not needed anymore
 	delete cameraToLight;
 
+	// Set the direction of the ray towards the light source (through (b) - (a)), and then normalize it again just to be sure
+	shadowRay->direction.x = lightCollisionPoint[0] - shadowRay->origin.x;
+	shadowRay->direction.y = lightCollisionPoint[1] - shadowRay->origin.y;
+	shadowRay->direction.z = lightCollisionPoint[2] - shadowRay->origin.z;
+
+	// Normalize the shadowRay direction
 	shadowRay->direction = getUnitVector(shadowRay->direction);
 
 	// Now check to see if this shadow ray collided with anything
@@ -1007,7 +1010,7 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 		// Create points for the plane equation and the normal
 		// Now attempt to find a t that satisfies the triangle collision equation
 
-		if (getDotProduct(normal, shadowRay->direction) == 0) { // Calculation needs to abort to prevent divide by 0 error if true
+		if (abs(getDotProduct(normal, shadowRay->direction)) < 0.0001) { // Calculation needs to abort to prevent divide by 0 error if true
 			continue;
 		}
 
