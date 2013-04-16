@@ -19,10 +19,11 @@ Name: Tim Righettini
 #include <string>
 #include <iomanip>
 #include <cmath>
+#include <time.h>
 
 #define MAX_TRIANGLES 2000
 #define MAX_SPHERES 10
-#define MAX_LIGHTS 10
+#define MAX_LIGHTS 10000
 
 #define PI 3.14159265 // Needed for the trig calculations involved in this assignment
 
@@ -86,6 +87,7 @@ void plot_pixel_jpeg(int x,int y,unsigned char r,unsigned char g,unsigned char b
 void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 /*My Variables START*/
+int numRandomLights = 25; // Number of satellite lights that will be added around a main light, for the purposes of soft shadows
 
 // Struct used to hold a point -- will be used for both vectors and points since they can be represented the same way
 struct point {
@@ -560,7 +562,7 @@ void checkCollisionsPolygons() {
 				// Create points for the plane equation and the normal
 				// Now attempt to find a t that satisfies the triangle collision equation
 
-				if (getDotProduct(normal, rays[x][y].direction) == 0) { // Calculation needs to abort to prevent divide by 0 error if true
+				if (abs(getDotProduct(normal, rays[x][y].direction)) < 0.0001) { // Calculation needs to abort to prevent divide by 0 error if true
 					continue;
 				}
 
@@ -1255,6 +1257,49 @@ int loadScene(char *argv)
 	      printf("too many lights, you should increase MAX_LIGHTS!\n");
 	      exit(0);
 	    }
+
+	  // Add in the method to create the sub lights for soft shadows
+	  for (int i = 0; i < numRandomLights; i++) {
+		  Light light = l;
+		  // Randomly perturb the position of this new light
+		  /*
+		  light.position[0] += rand() % 1000;
+		  light.position[0] -= 500;
+		  light.position[0] /= 100000;
+		  
+		  light.position[1] += rand() % 1000;
+		  light.position[1] -= 500;
+		  light.position[1] /= 100000;
+		  
+		  light.position[2] += rand() % 1000;
+		  light.position[2] -= 500;
+		  light.position[2] /= 100000;
+		  */
+
+		  ///*
+		  for (int j = 0; j < 3; j++) {
+			  int randOffset = (rand() % 1001) - 500;
+			  double offset = (double)randOffset/(double)10000;
+			  light.position[j] += offset;
+		  }
+		  //*/
+		  
+
+		  // Weaken the intensity of the light proportionally to the number of satellite lights being created
+		  light.color[0] /= (numRandomLights + 1);
+		  light.color[1] /= (numRandomLights + 1);
+		  light.color[2] /= (numRandomLights + 1);
+
+		  lights[num_lights++] = light;
+	  }
+
+	  ///*
+	  // Divide the intensity of tha main light by the number of random lights + 1 after the after loop finishes executing
+	  l.color[0] /= (numRandomLights + 1);
+	  l.color[1] /= (numRandomLights + 1);
+	  l.color[2] /= (numRandomLights + 1);
+	  //*/
+
 	  lights[num_lights++] = l;
 	}
       else
@@ -1286,6 +1331,9 @@ void init()
   attenuationValues.x = 1;
   attenuationValues.y = 1;
   attenuationValues.z = 1;
+
+  // Seed rand
+  srand(time(NULL));
 
   // Do the raytracing calculations
   doStepOne(); // Uniformly send out rays from one location
