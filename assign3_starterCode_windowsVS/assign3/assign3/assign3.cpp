@@ -87,7 +87,7 @@ void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 /*My Variables START*/
 int numRandomLights = 0; // Number of satellite lights that will be added around a main light, for the purposes of soft shadows
-const int sampleNumber = 1; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
+const int sampleNumber = 2; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
 
 // Struct used to hold a point -- will be used for both vectors and points since they can be represented the same way
 struct point {
@@ -449,8 +449,8 @@ void checkCollisionsSpheres() {
 
 	// Loop through all of the spheres
 	for (int i = 0; i < num_spheres; i++) {
-		for (int x = 0; x < WIDTH; x++) {
-			for (int y = 0; y < HEIGHT; y++) {				
+		for (int x = 0; x < WIDTH * sampleNumber; x++) {
+			for (int y = 0; y < HEIGHT * sampleNumber; y++) {				
 				// Get xd^2 + yd^2 + zd^2 for the ray
 				//double a = getDotProduct(rays[x][y].direction, rays[x][y].direction); 
 
@@ -524,8 +524,8 @@ void checkCollisionsPolygons() {
 
 	// Loop through all of the spheres
 	for (int i = 0; i < num_triangles; i++) {
-		for (int x = 0; x < WIDTH; x++) {
-			for (int y = 0; y < HEIGHT; y++) {
+		for (int x = 0; x < WIDTH * sampleNumber; x++) {
+			for (int y = 0; y < HEIGHT * sampleNumber; y++) {
 				///*
 				// First, find the d value for the plane that the triangle exists on
 				// Create vector from Point A->B (B-A) and Point A->C (C-A)
@@ -647,8 +647,8 @@ void calculateNormals() {
 	int numSphereNormals = 0;
 	int numTriangleNormals = 0;
 	
-	for (int x = 0; x < WIDTH; x++) {
-		for (int y = 0; y < HEIGHT; y++) {
+	for (int x = 0; x < WIDTH * sampleNumber; x++) {
+		for (int y = 0; y < HEIGHT * sampleNumber; y++) {
 			// Calculate the normals for each rays that has collided with something (check the isSetT bool)
 			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
 				if (rays[x][y].collisionShape == SPHERE) { // Then this ray collided with a sphere, do the sphere normal calculation
@@ -686,8 +686,8 @@ void calculateNormals() {
 }
 
 void calculateColor() {
-	for (int x = 0; x < WIDTH; x++) {
-		for (int y = 0; y < HEIGHT; y++) {
+	for (int x = 0; x < WIDTH * sampleNumber; x++) {
+		for (int y = 0; y < HEIGHT * sampleNumber; y++) {
 			// Calculate the normals for each rays that has collided with something (check the isSetT bool)
 			if (rays[x][y].isSetT) { // Then a collision at point t was recorded
 				// Run through all of the light sources and cast shadow rays
@@ -1137,6 +1137,11 @@ void convertColorValues() {
 				else if (colorSum.z > 1) { // Clamp to 1
 					colorSum.z = 1;
 				}
+
+				// Initialize this color to the ambient color
+				averagedColors[x/sampleNumber][y/sampleNumber].red = ambient_light[0];
+				averagedColors[x/sampleNumber][y/sampleNumber].green = ambient_light[1];
+				averagedColors[x/sampleNumber][y/sampleNumber].blue = ambient_light[2];
 
 				// Now put the results of this into the averageRays array
 				averagedColors[x/sampleNumber][y/sampleNumber].red = colorSum.x;
