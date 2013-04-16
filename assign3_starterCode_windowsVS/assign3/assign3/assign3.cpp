@@ -38,7 +38,6 @@ int mode=MODE_JPEG;
 #define WIDTH 640
 #define HEIGHT 480
 
-
 //the field of view of the camera
 #define fov 60.0
 
@@ -87,7 +86,8 @@ void plot_pixel_jpeg(int x,int y,unsigned char r,unsigned char g,unsigned char b
 void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 /*My Variables START*/
-int numRandomLights = 25; // Number of satellite lights that will be added around a main light, for the purposes of soft shadows
+int numRandomLights = 0; // Number of satellite lights that will be added around a main light, for the purposes of soft shadows
+const int sampleNumber = 1; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
 
 // Struct used to hold a point -- will be used for both vectors and points since they can be represented the same way
 struct point {
@@ -134,7 +134,8 @@ double aspectRatio; // Will hold the aspect ratio as a decimal value -- used for
 point cornerPoints[4];
 
 // For holding all of the rays
-ray rays[WIDTH][HEIGHT];
+ray rays[WIDTH * sampleNumber][HEIGHT * sampleNumber];
+colorFloat averagedColors[WIDTH][HEIGHT]; // This array will used to hold the averaged values of the array above (if it holds supersampled data)
 
 double pixelTraversalValueX; // Will hold how far across the image plane is needed to traverse from one pixel center to the next horizonally
 double pixelTraversalValueY; // Will hold how far across the image plane is needed to traverse from one pixel center to the next vertically
@@ -246,6 +247,7 @@ void calculateColor(); // This will calculate phong lighting on every ray that c
 void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
 bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the spheres to see if there is a collision with a shadow ray
 bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the triangles to see if there is a collision with a shadow ray
+void convertColorValues(); // Will convert the color values of doubles to chars, and will do any averaging if necessary
 
 /*STEP ONE FUNCTIONS START*/
 void doStepOne() {
@@ -335,8 +337,8 @@ void calculatePixelTraversalIntervals() {
 	std::cout << "yDistance: " << pixelTraversalValueY << std::endl;
 	// Now divide these values by the width and Height, respectively, and then the actual travseral distance per pixel should be attained
 
-	pixelTraversalValueX = (double)pixelTraversalValueX/WIDTH;
-	pixelTraversalValueY = (double)pixelTraversalValueY/HEIGHT;
+	pixelTraversalValueX = (double)pixelTraversalValueX/WIDTH/sampleNumber;
+	pixelTraversalValueY = (double)pixelTraversalValueY/HEIGHT/sampleNumber;
 
 	// Now Print these values
 	std::cout << "-----Resulting X/Y Distance Intervals-----" << std::endl;
@@ -638,6 +640,7 @@ void doStepThree() {
 	std::cout << "-----Completing Step Three-----"<< std::endl;
 	calculateNormals();
 	calculateColor();
+	convertColorValues();
 }
 
 void calculateNormals() {
@@ -869,14 +872,10 @@ void calculateColor() {
 				else if (rays[x][y].collisionColorFloat.blue > 1) { // Clamp to 1
 					rays[x][y].collisionColorFloat.blue = 1;
 				}
-
-				// Finally, convert these floats into the char format
-				rays[x][y].collisionColor.red = rays[x][y].collisionColorFloat.red * 255;
-				rays[x][y].collisionColor.green = rays[x][y].collisionColorFloat.green * 255;
-				rays[x][y].collisionColor.blue = rays[x][y].collisionColorFloat.blue * 255;
 			}
 		}
 	}
+	std::cout << "Step Three: Finished calculating colors!" << std::endl;
 }
 
 void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay) {
@@ -1087,6 +1086,67 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 	return false;
 }
 
+void convertColorValues() {
+	if (sampleNumber == 1) {
+		for (int x = 0; x < WIDTH; x++) {
+			for (int y = 0; y < HEIGHT; y++) {
+				if (rays[x][y].isSetT) {
+					// Finally, convert these floats into the char format
+					rays[x][y].collisionColor.red = rays[x][y].collisionColorFloat.red * 255;
+					rays[x][y].collisionColor.green = rays[x][y].collisionColorFloat.green * 255;
+					rays[x][y].collisionColor.blue = rays[x][y].collisionColorFloat.blue * 255;
+				}
+			}
+		}
+	}
+	else { // Get all of the rays from a block of sampleNumber size, add up their colors, and then divide by sampleNum squared
+		for (int x = 0; x < WIDTH * sampleNumber; x+=sampleNumber) {
+			for (int y = 0; y < HEIGHT * sampleNumber; y+=sampleNumber) {
+				point colorSum; // Will hold the sum of all the colors for the next two loops
+				colorSum.x = 0;
+				colorSum.y = 0;
+				colorSum.z = 0;
+				for (int xNum = x; xNum < x + sampleNumber; xNum++) {
+					for (int yNum = y; yNum < y + sampleNumber; yNum++) {
+						colorSum.x += rays[xNum][yNum].collisionColorFloat.red;
+						colorSum.y += rays[xNum][yNum].collisionColorFloat.green;
+						colorSum.z += rays[xNum][yNum].collisionColorFloat.blue;
+					}
+				}
+				// Then average the values with sampleNum squared
+				colorSum.x /= (sampleNumber*sampleNumber);
+				colorSum.y /= (sampleNumber*sampleNumber);
+				colorSum.z /= (sampleNumber*sampleNumber);
+
+				// Make sure to clamp the phong values if they are below 0 or above 1
+				if (colorSum.x < 0) { // Clamp to 0
+					colorSum.x = 0;
+				}
+				else if (colorSum.x > 1) { // Clamp to 1
+					colorSum.x = 1;
+				}
+				if (colorSum.y < 0) { // Clamp to 0
+					colorSum.y = 0;
+				}
+				else if (colorSum.y > 1) { // Clamp to 1
+					colorSum.y = 1;
+				}
+				if (colorSum.z < 0) { // Clamp to 0
+					colorSum.z = 0;
+				}
+				else if (colorSum.z > 1) { // Clamp to 1
+					colorSum.z = 1;
+				}
+
+				// Now put the results of this into the averageRays array
+				averagedColors[x/sampleNumber][y/sampleNumber].red = colorSum.x;
+				averagedColors[x/sampleNumber][y/sampleNumber].green = colorSum.y;
+				averagedColors[x/sampleNumber][y/sampleNumber].blue = colorSum.z;
+			}
+		}
+	}
+}
+
 /*STEP THREE FUNCTIONS END*/
 
 
@@ -1103,7 +1163,15 @@ void draw_scene()
     glBegin(GL_POINTS);
     for(y=0;y < HEIGHT;y++)
     {
-		plot_pixel(x,HEIGHT-y-1,rays[x][y].collisionColor.red,rays[x][y].collisionColor.green,rays[x][y].collisionColor.blue);
+		if (sampleNumber == 1) {
+			plot_pixel(x, HEIGHT-y-1, rays[x][y].collisionColor.red, rays[x][y].collisionColor.green, rays[x][y].collisionColor.blue);
+		}
+		else {
+			char red = averagedColors[x][y].red * 255;
+			char green = averagedColors[x][y].green * 255;
+			char blue = averagedColors[x][y].blue * 255;
+			plot_pixel(x, HEIGHT-y-1, red, green, blue);
+		}
     }
     glEnd();
     glFlush();
@@ -1286,19 +1354,19 @@ int loadScene(char *argv)
 		  
 
 		  // Weaken the intensity of the light proportionally to the number of satellite lights being created
-		  light.color[0] /= (numRandomLights + 1);
-		  light.color[1] /= (numRandomLights + 1);
-		  light.color[2] /= (numRandomLights + 1);
+		  //light.color[0] /= (numRandomLights + 1);
+		  //light.color[1] /= (numRandomLights + 1);
+		  //light.color[2] /= (numRandomLights + 1);
 
 		  lights[num_lights++] = light;
 	  }
 
-	  ///*
+	  /*
 	  // Divide the intensity of tha main light by the number of random lights + 1 after the after loop finishes executing
 	  l.color[0] /= (numRandomLights + 1);
 	  l.color[1] /= (numRandomLights + 1);
 	  l.color[2] /= (numRandomLights + 1);
-	  //*/
+	  */
 
 	  lights[num_lights++] = l;
 	}
