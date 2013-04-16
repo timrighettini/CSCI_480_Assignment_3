@@ -87,7 +87,7 @@ void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 /*My Variables START*/
 int numRandomLights = 0; // Number of satellite lights that will be added around a main light, for the purposes of soft shadows
-const int sampleNumber = 2; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
+const int sampleNumber = 1; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
 
 // Struct used to hold a point -- will be used for both vectors and points since they can be represented the same way
 struct point {
@@ -873,6 +873,11 @@ void calculateColor() {
 					rays[x][y].collisionColorFloat.blue = 1;
 				}
 			}
+			else {
+				rays[x][y].collisionColorFloat.red = 1;
+				rays[x][y].collisionColorFloat.green = 1;
+				rays[x][y].collisionColorFloat.blue = 1;
+			}
 		}
 	}
 	std::cout << "Step Three: Finished calculating colors!" << std::endl;
@@ -946,6 +951,30 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 				continue;
 			}
 
+			// Check to make sure that at least one object is in front of the light source
+			point planeCollisionPoint_0;
+			planeCollisionPoint_0.x = shadowRay->origin.x + (shadowRay->direction.x) * t_0;
+			planeCollisionPoint_0.y = shadowRay->origin.y + (shadowRay->direction.y) * t_0;
+			planeCollisionPoint_0.z = shadowRay->origin.z + (shadowRay->direction.z) * t_0;
+
+			point planeCollisionPoint_1;
+			planeCollisionPoint_1.x = shadowRay->origin.x + (shadowRay->direction.x) * t_1;
+			planeCollisionPoint_1.y = shadowRay->origin.y + (shadowRay->direction.y) * t_1;
+			planeCollisionPoint_1.z = shadowRay->origin.z + (shadowRay->direction.z) * t_1;
+
+			// Convert the light position array into a point
+			point lightPosition;
+			lightPosition.x = lightCollisionPoint[0];
+			lightPosition.y = lightCollisionPoint[1];
+			lightPosition.z = lightCollisionPoint[2];
+			
+			// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
+			// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
+			if (!(getDistance(planeCollisionPoint_0, shadowRay->origin) < getDistance(lightPosition, shadowRay->origin))
+				&& 
+				!(getDistance(planeCollisionPoint_1, shadowRay->origin) < getDistance(lightPosition, shadowRay->origin))
+			) continue;		
+
 			// If one of these collisions is at t > 0, though, then there really was a collision, and this needs to be accounted for
 			
 			if ((t_0 < t_1) && t_0 > 0.00001) { // If t0 is the first intersection, store that value within the ray to easily find where the collision occurred in space
@@ -965,23 +994,9 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 				}
 			}
 
-			shadowRay->collisionPoint.x = shadowRay->origin.x + (shadowRay->direction.x) * shadowRay->t;
-			shadowRay->collisionPoint.y = shadowRay->origin.y + (shadowRay->direction.y) * shadowRay->t;
-			shadowRay->collisionPoint.z = shadowRay->origin.z + (shadowRay->direction.z) * shadowRay->t;
-
-			// Convert the light position array into a point
-			point lightPosition;
-			lightPosition.x = lightCollisionPoint[0];
-			lightPosition.y = lightCollisionPoint[1];
-			lightPosition.z = lightCollisionPoint[2];
-			
-			// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
-			// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
-			if (getDistance(shadowRay->collisionPoint, shadowRay->origin) < getDistance(lightPosition, shadowRay->origin)) // If so, return true
-				return true;
-		}
+		
+		}	
 	}
-
 	return false; // No collisions
 }
 
@@ -1020,7 +1035,7 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 		// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
 		if (t > 0.0001) { // Do the calculation, else, continue to the next loop iteration without any calculation				
 
-			// Calculate the collision point for reference
+			// Check to make sure that at least object is in front of the light source
 			point planeCollisionPoint;
 			planeCollisionPoint.x = shadowRay->origin.x + (shadowRay->direction.x) * t;
 			planeCollisionPoint.y = shadowRay->origin.y + (shadowRay->direction.y) * t;
@@ -1048,11 +1063,36 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 			double beta    = getTriangleArea(v0, planeCollisionPoint, v2)/getTriangleArea(v0,v1,v2);
 			double charlie = 1 - alpha - beta; // Hack out the third coordinate from the other two to save on FP divisions
 
-			if (planeCollisionPoint.x > -1.2 && planeCollisionPoint.y < 1 && alpha > 0 && beta > 0 && charlie > 0 && (abs(1 - alpha - beta - charlie) < 0.0001) && t > 0.00001) {
-				//std::cout << std::endl;
-			}
-
 			if (alpha > 0 && beta > 0 && charlie > 0 && (abs(1 - alpha - beta - charlie) < 0.0001) && t > 0.00001) { // If all points are positive
+				// Convert the light position array into a point
+				point lightPosition;
+				lightPosition.x = lightCollisionPoint[0];
+				lightPosition.y = lightCollisionPoint[1];
+				lightPosition.z = lightCollisionPoint[2];
+
+				point lightToOrigin;
+				lightToOrigin.x = lightPosition.x - shadowRay->origin.x;
+				lightToOrigin.y = lightPosition.y - shadowRay->origin.y;
+				lightToOrigin.z = lightPosition.z - shadowRay->origin.z;
+
+				point collisionToOrigin;
+				collisionToOrigin.x = planeCollisionPoint.x - shadowRay->origin.x;
+				collisionToOrigin.y = planeCollisionPoint.y - shadowRay->origin.y;
+				collisionToOrigin.z = planeCollisionPoint.z - shadowRay->origin.z;
+
+				point c1 = getUnitVector(collisionToOrigin);
+
+				point c2 = getUnitVector(lightToOrigin);
+
+				if ( getDotProduct(c1,c1) == getDotProduct(c2,c2) ) {
+					//std::cout << std::endl;
+				}					
+			
+				// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
+				// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
+				if (!(getDotProduct(collisionToOrigin, collisionToOrigin) < getDotProduct(lightToOrigin, lightToOrigin))) // If so, return true
+					continue;
+				
 				if (t < shadowRay->t || shadowRay->isSetT == false) { // If t < current t, or if t is not set
 					shadowRay->t = t;
 					shadowRay->isSetT = true;
@@ -1068,17 +1108,6 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 					shadowRay->barycentricRatios.x = alpha;
 					shadowRay->barycentricRatios.y = beta;
 					shadowRay->barycentricRatios.z = charlie;
-
-					// Convert the light position array into a point
-					point lightPosition;
-					lightPosition.x = lightCollisionPoint[0];
-					lightPosition.y = lightCollisionPoint[1];
-					lightPosition.z = lightCollisionPoint[2];
-			
-					// Make sure to check that object collision in question occurred IN FRONT of the light source instead of behind it.  
-					// Check to see if the distance of the collision with this current sphere is closer that the distance of the light
-					if (getDistance(shadowRay->collisionPoint, shadowRay->origin) < getDistance(lightPosition, shadowRay->origin)) // If so, return true
-						return true;
 				}
 			}
 		}
@@ -1095,6 +1124,11 @@ void convertColorValues() {
 					rays[x][y].collisionColor.red = rays[x][y].collisionColorFloat.red * 255;
 					rays[x][y].collisionColor.green = rays[x][y].collisionColorFloat.green * 255;
 					rays[x][y].collisionColor.blue = rays[x][y].collisionColorFloat.blue * 255;
+				}
+				else {
+					rays[x][y].collisionColor.red = 255;
+					rays[x][y].collisionColor.green = 255;
+					rays[x][y].collisionColor.blue = 255;
 				}
 			}
 		}
