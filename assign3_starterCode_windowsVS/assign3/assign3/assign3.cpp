@@ -98,7 +98,7 @@ struct point {
 
 // Struct that will hold the components of a color from 0 to 255
 struct color {
-	unsigned char red; 
+	unsigned char red;
 	unsigned char green;
 	unsigned char blue;
 }; 
@@ -1385,27 +1385,27 @@ int loadScene(char *argv)
 
 		  ///*
 		  for (int j = 0; j < 3; j++) {
-			  int randOffset = (rand() % 1001) - 500;
-			  double offset = (double)randOffset/(double)10000;
+			  int randOffset = (rand() % 2001) - 1000;
+			  double offset = (double)randOffset/(double)35000;
 			  light.position[j] += offset;
 		  }
 		  //*/
 		  
 
 		  // Weaken the intensity of the light proportionally to the number of satellite lights being created
-		  //light.color[0] /= (numRandomLights + 1);
-		  //light.color[1] /= (numRandomLights + 1);
-		  //light.color[2] /= (numRandomLights + 1);
+		  light.color[0] /= (numRandomLights + 1);
+		  light.color[1] /= (numRandomLights + 1);
+		  light.color[2] /= (numRandomLights + 1);
 
 		  lights[num_lights++] = light;
 	  }
 
-	  /*
-	  // Divide the intensity of tha main light by the number of random lights + 1 after the after loop finishes executing
+	  ///*
+	  // Divide the intensity of the main light by the number of random lights + 1 after the after loop finishes executing
 	  l.color[0] /= (numRandomLights + 1);
 	  l.color[1] /= (numRandomLights + 1);
 	  l.color[2] /= (numRandomLights + 1);
-	  */
+	  //*/
 
 	  lights[num_lights++] = l;
 	}
