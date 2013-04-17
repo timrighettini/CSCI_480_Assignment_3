@@ -87,7 +87,7 @@ void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 /*My Variables START*/
 const int numRandomLights = 0; // Number of satellite lights that will be added around a main light, for the purposes of soft shadows
-const int sampleNumber = 1; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
+const int sampleNumber =  1; // How many extra rays will be casted per x and y -- 1 is normal sampling, two is double sampling, etc
 
 // Struct used to hold a point -- will be used for both vectors and points since they can be represented the same way
 struct point {
