@@ -245,8 +245,8 @@ void doStepThree(); // This will complete all of the normal and lighting calcula
 void calculateNormals(); // This will calculate the normals for both rays that intersected with spheres and triangles -- different lighting equations will be derived depending on the "shape" parameter of a ray
 void calculateColor(); // This will calculate phong lighting on every ray that collided with something, else, the background color will be used
 void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *shadowRay); // Will return whether the shadow ray collided with an object or not, may need a check for when the origin of a ray is inside a sphere
-bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the spheres to see if there is a collision with a shadow ray
-bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the triangles to see if there is a collision with a shadow ray
+void checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the spheres to see if there is a collision with a shadow ray
+void checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]); // Will check all of the triangles to see if there is a collision with a shadow ray
 void convertColorValues(); // Will convert the color values of doubles to chars, and will do any averaging if necessary
 
 /*STEP ONE FUNCTIONS START*/
@@ -416,22 +416,6 @@ void calculateRays() {
 	// Print this value, make sure that it prints correctly
 	std::cout << "-----RESULTS OF STEP ONE-----" << std::endl;
 	std::cout << "Number of rays created: " << numRaysCreated << std::endl;
-
-	// Test, iterate through the array to make sure that there are no empty spots
-	
-	//std::cout << "Ray Stats: " << std::endl;
-	//for (x = 0; x < WIDTH; x++) {
-	//	for (y = 0; y < HEIGHT; y++) {				
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.x " << rays[x][y].direction.x << std::endl;
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.y " << rays[x][y].direction.y << std::endl;
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.z " << rays[x][y].direction.z << std::endl;
-	//		std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].vectD  Magnitude: " << getDotProduct(rays[x][y].direction, rays[x][y].direction) << std::endl;
-	//		std::cout << "rays[" << x << "][" << y << "].origin.x " << rays[x][y].origin.x << std::endl;
-	//		std::cout << "rays[" << x << "][" << y << "].origin.y " << rays[x][y].origin.y << std::endl;
-	//		std::cout << "rays[" << x << "][" << y << "].origin.z " << rays[x][y].origin.z << std::endl;
-	//		std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
-	//	}
-	//}
 }
 
 /*STEP ONE FUNCTIONS END*/
@@ -443,6 +427,7 @@ void doStepTwo() {
 	checkCollisionsSpheres();
 	checkCollisionsPolygons();
 }
+
 void checkCollisionsSpheres() {
 
 	int numSphereCollisions = 0; // Value that tallies all of the sphere collisions
@@ -503,22 +488,8 @@ void checkCollisionsSpheres() {
 	// Print this value, make sure that it prints correctly
 	std::cout << "-----RESULTS OF STEP TWO: PART ONE-----" << std::endl;
 	std::cout << "Number of Sphere Collisions: " << numSphereCollisions << std::endl;
-
-	// Test, iterate through the array to make sure that there are no empty spots
-	
-	//std::cout << "Ray Stats (t): " << std::endl;
-	//for (int x = 0; x < WIDTH; x++) {
-	//	for (int y = 0; y < HEIGHT; y++) {				
-	//		if (rays[x][y].t > 0) {
-	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.x " << rays[x][y].direction.x << std::endl;
-	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.y " << rays[x][y].direction.y << std::endl;
-	//			std::cout << std::setprecision(16) << "rays[" << x << "][" << y << "].direction.z " << rays[x][y].direction.z << std::endl;				
-	//			std::cout << "rays[" << x << "][" << y << "].t " << rays[x][y].t << std::endl;
-	//		}
-	//	}
-	//}
-
 }
+
 void checkCollisionsPolygons() {
 	int numTriangleCollisions = 0; // Value that tallies all of the sphere collisions
 
@@ -547,27 +518,11 @@ void checkCollisionsPolygons() {
 				double d = (normal.x * triangles[i].v[0].position[0]) + (normal.y * triangles[i].v[0].position[1]) + (normal.z * triangles[i].v[0].position[2]);
 				d *= -1; // Make the d go to the appropriate side of the equation
 
-				/*
-				// Method adapted from http://nehe.gamedev.net/tutorial/shadows/16010/ -- may be used if my current method does not work with all Tris
-				// Find the equation of a plane
-				point planeXYZ; 
-				planeXYZ.x = v0.y * (v1.z - v2.z) + v1.y * (v2.z - v0.z) + v2.y * (v0.z - v1.z);
-				planeXYZ.y = v0.z * (v1.x - v2.x) + v1.z * (v2.x - v0.x) + v2.z * (v0.x - v1.x);
-				planeXYZ.z = v0.x * (v1.y - v2.y) + v1.x * (v2.y - v0.y) + v2.x * (v0.y - v1.y);
-				
-				
-				// Now let's find d
-				d = -( v0. x *( v1.y * v2.z - v2.y * v1.z ) + v1.x * (v2.y * v0.z - v0.y * v2.z) + v2.x * (v0.y * v1.z - v1.y * v0.z) );
-				*/
-
-				// Since all triangles appear within one plane, it is safe to assume that the normals at each vertex (and throughout the test of the triangle) are the same
-				// Create points for the plane equation and the normal
-				// Now attempt to find a t that satisfies the triangle collision equation
-
 				if (abs(getDotProduct(normal, rays[x][y].direction)) < 0.0001) { // Calculation needs to abort to prevent divide by 0 error if true
 					continue;
 				}
 
+				// Find the t value, according the equation described in lecture
 				double t = -(getDotProduct(normal, rays[x][y].origin) + d)/(getDotProduct(normal, rays[x][y].direction));
 
 				// Now that the values have been initialized, let's make sure that b^2 -4c is NOT negative
@@ -890,29 +845,7 @@ void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *sh
 	shadowRay->origin.y = collisionRay->collisionPoint.y;
 	shadowRay->origin.z = collisionRay->collisionPoint.z;
 
-	// Get the two unit rays that goes from:
-	// a) The camera to the light source -- needs to be calculated here
-	// b) The camera to the collision point -- attained through the first function argument
-
-	ray *cameraToLight = new ray;
-
-	cameraToLight->origin = cameraOrigin;
-	cameraToLight->direction.x = lightCollisionPoint[0] - cameraOrigin.x;
-	cameraToLight->direction.y = lightCollisionPoint[1] - cameraOrigin.y;
-	cameraToLight->direction.z = lightCollisionPoint[2] - cameraOrigin.z;
-
-	// Normalize the direction vector
-	cameraToLight->direction = getUnitVector(cameraToLight->direction);
-
-	// Set the direction of the ray towards the light source (through (b) - (a)), and then normalize it again just to be sure
-	shadowRay->direction.x = cameraToLight->direction.x - collisionRay->direction.x;
-	shadowRay->direction.y = cameraToLight->direction.y - collisionRay->direction.y;
-	shadowRay->direction.z = cameraToLight->direction.z - collisionRay->direction.z;
-
-	// Make sure to delete the cameraToLight ray, since it is not needed anymore
-	delete cameraToLight;
-
-	// Set the direction of the ray towards the light source (through (b) - (a)), and then normalize it again just to be sure
+	// Set the direction of the ray towards the light source, and then normalize it again just to be sure
 	shadowRay->direction.x = lightCollisionPoint[0] - shadowRay->origin.x;
 	shadowRay->direction.y = lightCollisionPoint[1] - shadowRay->origin.y;
 	shadowRay->direction.z = lightCollisionPoint[2] - shadowRay->origin.z;
@@ -927,7 +860,7 @@ void calculateShadowRay(ray *collisionRay, double lightCollisionPoint[], ray *sh
 	return;
 }
 
-bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) {
+void checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) {
 
 	for (int i = 0; i < num_spheres; i++) {
 		// Get 2 * ( (xd(x0 - xc)) + ((yd(y0 - yc)) + ((zd(z0 - zc)) )
@@ -992,15 +925,13 @@ bool checkShadowCollisionsSpheres(ray *shadowRay, double lightCollisionPoint[]) 
 					shadowRay->collisionShape = SPHERE;
 					shadowRay->collisionIndex = i;
 				}
-			}
-
-		
+			}		
 		}	
 	}
-	return false; // No collisions
+	return;
 }
 
-bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]) {
+void checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]) {
 	// Loop through all of the spheres
 	for (int i = 0; i < num_triangles; i++) {
 		// First, find the d value for the plane that the triangle exists on
@@ -1112,7 +1043,7 @@ bool checkShadowCollisionsTriangles(ray *shadowRay, double lightCollisionPoint[]
 			}
 		}
 	}
-	return false;
+	return;
 }
 
 void convertColorValues() {
@@ -1188,7 +1119,6 @@ void convertColorValues() {
 
 /*STEP THREE FUNCTIONS END*/
 
-
 /* RAY TRACING FUNCTIONS END */
 
 //MODIFY THIS FUNCTION
@@ -1202,10 +1132,10 @@ void draw_scene()
     glBegin(GL_POINTS);
     for(y=0;y < HEIGHT;y++)
     {
-		if (sampleNumber == 1) {
+		if (sampleNumber == 1) { // Normal operation
 			plot_pixel(x, HEIGHT-y-1, rays[x][y].collisionColor.red, rays[x][y].collisionColor.green, rays[x][y].collisionColor.blue);
 		}
-		else {
+		else { // If averaging was required
 			char red = averagedColors[x][y].red * 255;
 			char green = averagedColors[x][y].green * 255;
 			char blue = averagedColors[x][y].blue * 255;
@@ -1389,8 +1319,7 @@ int loadScene(char *argv)
 			  double offset = (double)randOffset/(double)35000;
 			  light.position[j] += offset;
 		  }
-		  //*/
-		  
+		  //*/		  
 
 		  // Weaken the intensity of the light proportionally to the number of satellite lights being created
 		  light.color[0] /= (numRandomLights + 1);

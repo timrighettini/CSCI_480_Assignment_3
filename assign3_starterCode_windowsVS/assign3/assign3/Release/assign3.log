@@ -1,38 +1,38 @@
-﻿Build started 4/16/2013 7:08:18 PM.
+﻿Build started 4/16/2013 7:48:29 PM.
      1>Project "C:\Users\Czardragon\Documents\GitHub\CSCI_480_Assignment_3\assign3_starterCode_windowsVS\assign3\assign3\assign3.vcxproj" on node 2 (build target(s)).
      1>InitializeBuildStatus:
          Creating "Release\assign3.unsuccessfulbuild" because "AlwaysCreate" was specified.
        ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I"glut-3.7.6-bin" /IpicLibrary /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt assign3.cpp
          assign3.cpp
-     1>assign3.cpp(1260): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
+     1>assign3.cpp(1190): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\string.h(246) : see declaration of 'stricmp'
-     1>assign3.cpp(1262): warning C4101: 'error' : unreferenced local variable
-     1>assign3.cpp(1273): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1192): warning C4101: 'error' : unreferenced local variable
+     1>assign3.cpp(1203): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1275): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1205): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1282): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1212): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1284): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1214): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1291): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1221): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1293): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1223): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1299): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1229): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(234) : see declaration of 'fopen'
-     1>assign3.cpp(1306): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1236): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1315): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>assign3.cpp(1245): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(253) : see declaration of 'fscanf'
-     1>assign3.cpp(1317): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
+     1>assign3.cpp(1247): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\string.h(246) : see declaration of 'stricmp'
-     1>assign3.cpp(1339): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
+     1>assign3.cpp(1269): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\string.h(246) : see declaration of 'stricmp'
-     1>assign3.cpp(1356): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
+     1>assign3.cpp(1286): warning C4996: 'stricmp': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _stricmp. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\string.h(246) : see declaration of 'stricmp'
-     1>assign3.cpp(1309): warning C4101: 'str' : unreferenced local variable
+     1>assign3.cpp(1239): warning C4101: 'str' : unreferenced local variable
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Czardragon\Documents\GitHub\CSCI_480_Assignment_3\assign3_starterCode_windowsVS\assign3\Release\assign3.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:"glut-3.7.6-bin" /LIBPATH:picLibrary libjpeg.lib libtiff.lib picLibrary.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"Release\assign3.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"C:\Users\Czardragon\Documents\GitHub\CSCI_480_Assignment_3\assign3_starterCode_windowsVS\assign3\Release\assign3.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Czardragon\Documents\GitHub\CSCI_480_Assignment_3\assign3_starterCode_windowsVS\assign3\Release\assign3.lib" /MACHINE:X86 Release\assign3.obj
      1>MSVCRT.lib(cinitexe.obj) : warning LNK4098: defaultlib 'libcmtd.lib' conflicts with use of other libs; use /NODEFAULTLIB:library
@@ -96,4 +96,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.76
+Time Elapsed 00:00:02.36
